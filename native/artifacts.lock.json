@@ -42,31 +42,31 @@
   },
   "targets": {
     "linux-x64": {
-      "sha256": null
+      "sha256": "c62d01dc0813de053f28e2d99e3171b5b5e0b2f1616e57b57cc0dee25d5be733"
     },
     "linux-arm64": {
-      "sha256": null
+      "sha256": "75aa423f02471801b8b5d44948d42902742924333f1010d98a0ceced070e7ed6"
     },
     "windows-x64": {
-      "sha256": null
+      "sha256": "b8427edca3134d654cc13c5aef76ed424f5ffe131ca2c0c5d0d19cccdbf88da9"
     },
     "windows-arm64": {
-      "sha256": null
+      "sha256": "d11a0ef04f60027e9e757453218ffb35e6d6c6fe5f5dfe975b5ac4907304d998"
     },
     "macos-universal": {
-      "sha256": null
+      "sha256": "1cfc12a71f33bf0b33f9c1fa431b716aba19a8b2c76d3fd28a9d568d625ec444"
     },
     "android-arm64": {
-      "sha256": null
+      "sha256": "5e024be17e93a3207de88fa6fb2da0c7595fd154ef61112b7ec1ebc346a4ac7f"
     },
     "android-x64": {
-      "sha256": null
+      "sha256": "0c9092106d160818e5b6bae790a92946585c0eb45e334bb97232c61934eec0c1"
     },
     "ios-arm64": {
-      "sha256": null
+      "sha256": "d22bf5da4f0b0b7a8f639c88d72bbf7c8ba02d3fe5a98b807a04728cda05044c"
     },
     "ios-simulator": {
-      "sha256": null
+      "sha256": "43f819d7e78ae057d25cf1e8d58aa85b5eef436cc399ff954f356e0e4fb1be9b"
     }
   }
 }

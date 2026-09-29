@@ -493,12 +493,16 @@ build that has not cached it. A fix is a new `artifacts` version.
 
 ## Not yet verified (as of 2026-09-29)
 
-Every `native.yml` job has gone green, each on its own branch (#3 Windows,
-#4 macOS and iOS, #5 Linux and Android): the native build and `dart test` —
-real crashes, sanitised, uploaded to a local server — on linux-x64,
-linux-arm64, windows-x64, windows-arm64 and macos-universal; the example's
-headless crash on Linux and Windows x64; the macOS app built and
-`codesign --verify`'d; the iOS builds; the Android e2e on an emulator. Still
+`native-v0.1.0` (2026-09-29, `b473820`) is the first native release: the
+whole matrix green in one tagged run — the native build and `dart test` (real
+crashes, sanitised, uploaded to a local server) on linux-x64, linux-arm64,
+windows-x64, windows-arm64 and macos-universal; the example's headless crash
+on Linux and Windows x64; the macOS app built and `codesign --verify`'d; the
+iOS builds; the Android e2e on an emulator — and the release job, whose
+digests were recomputed from the downloaded archives before the draft was
+published. From the live release, into an empty cache: `prefetch
+--all-targets` on Linux, the whole `dart test` against the downloaded
+linux-x64 library, and `cmake/fetch_artifact.cmake` for the handler. Still
 unproved:
 - **iOS at run time**: the in-process start, `ProcessIntermediateDumps` and
   the upload. CI builds the library and the example but runs nothing; an
@@ -506,9 +510,8 @@ unproved:
   Mac. The example takes `--crash=` only through Android's intent so far.
 - Windows fast-fail through WER, and a Developer ID–signed macOS app.
 - android-arm64 on hardware (x86_64 on an emulator is verified end to end).
-- The download path against a real release (there is none yet). It is covered
-  against a local server by `artifacts_test.dart`, and by hand for CMake.
-- The whole matrix in one run, and the release job (it runs only on a tag).
+- The download path on macOS (the pod's `embed_handler.sh`) and on Windows
+  against the live release; the Linux hook, `prefetch` and CMake are proved.
 
 ## The example
 
