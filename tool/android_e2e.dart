@@ -11,7 +11,8 @@
 // What it proves, in order:
 //   1. each CrashpadTestCrash, and a dump without a crash, leaves a report,
 //      with the handler started by the system linker from inside the APK;
-//   2. the raw report holds both kinds of annotation and the planted email;
+//   2. the raw report holds both kinds of annotation, and a crash's the
+//      planted email — read as it appears, before a later launch sanitises it;
 //   3. on the next launch every report is sanitised — the email gone from the
 //      file itself — and, with consent and a URL, sent: to a server on this
 //      machine, reached from the emulator as 10.0.2.2, which must receive the
@@ -66,23 +67,33 @@ Future<void> main() async {
   await _run(adb, ['shell', 'wm', 'dismiss-keyguard']);
   await _run(adb, ['shell', 'svc', 'power', 'stayon', 'true']);
 
-  // 1. One report per crash.
+  // 1. One report per crash, and 2. what it leaves, before anything of ours
+  // has read it.
+  //
+  // Each report is read the moment it appears, because every launch
+  // sanitises the reports already there, on the backlog isolate, and a
+  // launch that lives — `dump` does not crash — gets as far as doing it: read
+  // at the end, the earlier reports were already clean. The same launch may
+  // reach its own dump, which it writes just after `start`, so the email is
+  // required only of the three that die at once. They are what makes step 3's
+  // "no longer holds the email" mean something.
+  final seen = <String>{};
   for (final (index, kind) in _crashes.indexed) {
     await _launch(adb, ['--crash=$kind']);
     await _until('a report of $kind', () async {
       return (await _dumps(adb)).length == index + 1;
     });
-    _step('$kind: report written');
-  }
-
-  // 2. What a crash leaves, before anything of ours has read it.
-  for (final dump in await _dumps(adb)) {
+    final dump = (await _dumps(adb)).toSet().difference(seen).single;
+    seen.add(dump);
     final raw = await _pull(adb, dump);
-    _expect(raw.contains('example.screen'), '$dump has the runtime annotation');
-    _expect(raw.contains('example.build'), '$dump has the process annotation');
-    _expect(raw.contains('ada@example.com'), '$dump holds the planted email');
+    _expect(raw.contains('example.screen'), '$kind has the runtime annotation');
+    _expect(raw.contains('example.build'), '$kind has the process annotation');
+    if (kind != 'dump') {
+      _expect(raw.contains('ada@example.com'), '$kind holds the planted email');
+    }
+    _step('$kind: report written, with both annotations');
   }
-  _step('raw reports hold both annotations and the planted email');
+  _step('the crashes\' raw reports hold the planted email');
 
   // 3. The next launch sanitises and sends.
   final server = await HttpServer.bind(InternetAddress.anyIPv4, 0);
