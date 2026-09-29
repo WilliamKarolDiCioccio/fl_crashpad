@@ -2,17 +2,15 @@
 # proved: each job runs the package's own tests against what it just built —
 # real crashes, real reports — before anything is kept.
 #
-# Run by hand only — nine jobs on four operating systems are too much to
-# spend on every push:
+# It runs on two occasions only: by hand (workflow_dispatch), to prove a
+# branch, and on a pushed tag `native-v<version>`, which also publishes. Not
+# on every pull request or push: nine jobs building Crashpad from source are
+# too much to spend on a change that does not touch the native half.
 #
-#   gh workflow run native.yml --ref <branch>          # build and test
-#   gh workflow run native.yml --ref native-v<version> # ...and publish
-#
-# Dispatched on a tag `native-v<version>`, it also publishes: the archives go
-# to a draft release, with the command that records their digests in
-# native/artifacts.lock.json. The lock is updated by hand from that command
-# and released with the package, so a digest is never trusted that nobody
-# looked at. Pushing the tag starts nothing; dispatch on it once it is pushed.
+# A tag's archives go to a draft release, with the command that records their
+# digests in native/artifacts.lock.json. The lock is updated by hand from that
+# command and released with the package, so a digest is never trusted that
+# nobody looked at.
 #
 # The glibc floor of a Linux archive is the glibc it was built against, which
 # is why the Linux jobs run on the oldest runners there are.
@@ -20,6 +18,8 @@ name: native
 
 on:
   workflow_dispatch:
+  push:
+    tags: ['native-v*']
 
 permissions:
   contents: read
