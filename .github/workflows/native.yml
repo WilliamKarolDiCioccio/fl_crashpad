@@ -36,9 +36,9 @@ jobs:
       matrix:
         include:
           - { target: linux-x64, runner: ubuntu-22.04 }
-          - { target: linux-arm64, runner: ubuntu-22.04-arm }
+          - { target: linux-arm64, runner: ubuntu-22.04-arm, flutter-git: true }
           - { target: windows-x64, runner: windows-2022 }
-          - { target: windows-arm64, runner: windows-11-arm }
+          - { target: windows-arm64, runner: windows-11-arm, flutter-git: true }
           - { target: macos-universal, runner: macos-14 }
     steps:
       - uses: actions/checkout@v4
@@ -58,24 +58,26 @@ jobs:
         run: echo "version=$(jq -r .flutter .fvmrc)" >> "$GITHUB_OUTPUT"
 
       - uses: subosito/flutter-action@v2
-        if: matrix.target != 'windows-arm64'
+        if: ${{ !matrix.flutter-git }}
         with:
           flutter-version: ${{ steps.fvm.outputs.version }}
           cache: true
 
-      # Flutter publishes no Windows-on-Arm SDK archive, so the action finds
-      # nothing to install there. A checkout of the release tag is the same
-      # SDK; precache fetches what the archive would have carried, sky_engine
-      # among it, without which nothing that depends on Flutter resolves.
+      # Flutter publishes no SDK archive for Windows on Arm or for Linux on
+      # Arm, so the action finds nothing to install there. A checkout of the
+      # release tag is the same SDK; precache fetches what the archive would
+      # have carried, sky_engine among it, without which nothing that depends
+      # on Flutter resolves.
       - name: Flutter, from its release tag
-        if: matrix.target == 'windows-arm64'
+        if: matrix.flutter-git
         shell: bash
         run: |
           git clone --depth 1 --branch "${{ steps.fvm.outputs.version }}" \
             https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
           echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
           echo "FLUTTER_ROOT=$RUNNER_TEMP/flutter" >> "$GITHUB_ENV"
-          "$RUNNER_TEMP/flutter/bin/flutter" precache --windows
+          "$RUNNER_TEMP/flutter/bin/flutter" precache \
+            --${{ runner.os == 'Windows' && 'windows' || 'linux' }}
           "$RUNNER_TEMP/flutter/bin/flutter" --version
 
       # That Flutter's Dart is x64 — "does not support Windows Arm64, falling
@@ -99,12 +101,21 @@ jobs:
 
       # Crashpad's libcurl upload transport needs the headers to build; at run
       # time it dlopens libcurl, so the archive does not depend on it.
+      #
+      # Clang comes from apt.llvm.org: 22.04's own is 14, which rejects the
+      # `-std=c++23` mini_chromium builds with (17 is the first to accept the
+      # spelling). mini_chromium runs whichever `clang` is first on PATH. The
+      # runner stays 22.04 for its glibc, which is the archive's floor.
       - name: Linux build dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang libcurl4-openssl-dev zlib1g-dev \
+          sudo apt-get install -y libcurl4-openssl-dev zlib1g-dev \
             ninja-build libgtk-3-dev xvfb
+          curl -fsSL https://apt.llvm.org/llvm.sh -o "$RUNNER_TEMP/llvm.sh"
+          sudo bash "$RUNNER_TEMP/llvm.sh" 18
+          echo /usr/lib/llvm-18/bin >> "$GITHUB_PATH"
+          /usr/lib/llvm-18/bin/clang --version
 
       - name: Build the native half
         shell: bash
@@ -216,6 +227,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      # The runner's default JDK is 11, and the Android Gradle plugin the
+      # example's Flutter generates needs 17.
+      - uses: actions/setup-java@v4
+        if: runner.os == 'Linux'
+        with:
+          distribution: temurin
+          java-version: '17'
 
       - name: Build the native half
         shell: bash
