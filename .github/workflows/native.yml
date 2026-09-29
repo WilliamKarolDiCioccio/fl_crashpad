@@ -40,6 +40,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # macos-14 defaults to Xcode 15.4, whose clang rejects `-std=c++23` that
+      # mini_chromium builds with; the newest stable Xcode on the image has a
+      # clang that accepts it.
+      - name: Select the newest Xcode
+        if: runner.os == 'macOS'
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
       - name: Read the pinned Flutter version
         id: fvm
         shell: bash
@@ -181,6 +190,15 @@ jobs:
           - { target: ios-simulator, runner: macos-14 }
     steps:
       - uses: actions/checkout@v4
+
+      # macos-14 defaults to Xcode 15.4, whose clang rejects `-std=c++23` that
+      # mini_chromium builds with; the newest stable Xcode on the image has a
+      # clang that accepts it.
+      - name: Select the newest Xcode
+        if: runner.os == 'macOS'
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
 
       - name: Read the pinned Flutter version
         id: fvm
