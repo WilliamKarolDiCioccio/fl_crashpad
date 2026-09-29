@@ -274,8 +274,8 @@ dart run tool/build_native.dart --target android-arm64 --install
 
 It fetches Crashpad at the pinned revision with git, and GN and ninja from
 Chromium's package server, and needs Python 3 and the platform's compiler —
-clang on Linux (with libcurl's and zlib's headers) and macOS, LLVM or Visual
-Studio on Windows, the Android NDK for Android (from any of the three), and
+clang on Linux (with libcurl's and zlib's headers) and macOS, Visual Studio
+on Windows, the Android NDK for Android (from any of the three), and
 Xcode for iOS. `--install` puts the result in the cache, where the next
 Flutter build finds it.
 

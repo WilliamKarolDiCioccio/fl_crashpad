@@ -9,7 +9,7 @@
 // The same script is what CI runs to produce a release, so a from-source build
 // and a downloaded one are built identically. It needs git, python3 (GN runs
 // mini_chromium's helpers with it) and the platform's compiler: clang on Linux
-// and macOS, and on Windows either an installed LLVM or Visual Studio's MSVC.
+// and macOS, and on Windows Visual Studio's MSVC.
 // Android targets build on any of the three with an NDK; iOS targets on a Mac
 // with Xcode.
 // gn and ninja come from Chromium's package server at the pinned versions.
@@ -461,16 +461,16 @@ class _Builder {
         // process call abort() through. With mini_chromium's default static
         // CRT it would sit in a private copy and see no abort but its own.
         cflags.insert(0, '/MD');
-        final llvm = _windowsLlvm();
-        if (llvm != null) {
-          args.add('clang_path="${llvm.replaceAll(r'\', '/')}"');
-        } else {
-          args.add('mini_chromium_is_clang=false');
-          // Upstream builds only with clang, and cl.exe at /W4 /WX stops on
-          // warnings in Crashpad's own headers (C4201 in cpu_context.h), which
-          // this package does not patch. Still shown, no longer fatal.
-          cflags.add('/WX-');
-        }
+        // Visual Studio's cl.exe, as Flutter's own Windows builds use, and
+        // never clang-cl: mini_chromium writes clang_path into its ninja
+        // commands unquoted, and rebases it relative to the build directory,
+        // so LLVM's default C:\Program Files\LLVM splits at the space — and
+        // from another drive, as on CI's D:, becomes no path at all.
+        args.add('mini_chromium_is_clang=false');
+        // Upstream builds only with clang, and cl.exe at /W4 /WX stops on
+        // warnings in Crashpad's own headers (C4201 in cpu_context.h), which
+        // this package does not patch. Still shown, no longer fatal.
+        cflags.add('/WX-');
     }
     if (cflags.isNotEmpty) args.add('extra_cflags="${cflags.join(' ')}"');
     if (ldflags.isNotEmpty) args.add('extra_ldflags="${ldflags.join(' ')}"');
@@ -530,23 +530,6 @@ class _Builder {
     };
     final suffix = Platform.isWindows ? '.exe' : '';
     return '${_androidNdk()}/toolchains/llvm/prebuilt/$host/bin/$name$suffix';
-  }
-
-  /// An installed LLVM with clang-cl and lld-link, as GitHub's Windows images
-  /// carry. Without one the build uses MSVC's cl.exe.
-  String? _windowsLlvm() {
-    final candidates = [
-      Platform.environment['FL_CRASHPAD_LLVM'],
-      r'C:\Program Files\LLVM',
-    ];
-    for (final candidate in candidates) {
-      if (candidate == null) continue;
-      if (File('$candidate\\bin\\clang-cl.exe').existsSync() &&
-          File('$candidate\\bin\\lld-link.exe').existsSync()) {
-        return candidate;
-      }
-    }
-    return null;
   }
 
   // --------------------------------------------------------------------------

@@ -2,22 +2,24 @@
 # proved: each job runs the package's own tests against what it just built —
 # real crashes, real reports — before anything is kept.
 #
-# Every pull request and push runs the matrix. A tag `native-v<version>`
-# additionally publishes: the archives go to a draft release, with the
-# command that records their digests in native/artifacts.lock.json. The lock
-# is updated by hand from that command and released with the package, so a
-# digest is never trusted that nobody looked at.
+# It runs on two occasions only: by hand (workflow_dispatch), to prove a
+# branch, and on a pushed tag `native-v<version>`, which also publishes. Not
+# on every pull request or push: nine jobs building Crashpad from source are
+# too much to spend on a change that does not touch the native half.
+#
+# A tag's archives go to a draft release, with the command that records their
+# digests in native/artifacts.lock.json. The lock is updated by hand from that
+# command and released with the package, so a digest is never trusted that
+# nobody looked at.
 #
 # The glibc floor of a Linux archive is the glibc it was built against, which
 # is why the Linux jobs run on the oldest runners there are.
 name: native
 
 on:
-  push:
-    branches: [main]
-    tags: ['native-v*']
-  pull_request:
   workflow_dispatch:
+  push:
+    tags: ['native-v*']
 
 permissions:
   contents: read
@@ -44,9 +46,40 @@ jobs:
         run: echo "version=$(jq -r .flutter .fvmrc)" >> "$GITHUB_OUTPUT"
 
       - uses: subosito/flutter-action@v2
+        if: matrix.target != 'windows-arm64'
         with:
           flutter-version: ${{ steps.fvm.outputs.version }}
           cache: true
+
+      # Flutter publishes no Windows-on-Arm SDK archive, so the action finds
+      # nothing to install there. A checkout of the release tag is the same
+      # SDK; precache fetches what the archive would have carried, sky_engine
+      # among it, without which nothing that depends on Flutter resolves.
+      - name: Flutter, from its release tag
+        if: matrix.target == 'windows-arm64'
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "${{ steps.fvm.outputs.version }}" \
+            https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+          echo "FLUTTER_ROOT=$RUNNER_TEMP/flutter" >> "$GITHUB_ENV"
+          "$RUNNER_TEMP/flutter/bin/flutter" precache --windows
+          "$RUNNER_TEMP/flutter/bin/flutter" --version
+
+      # That Flutter's Dart is x64 — "does not support Windows Arm64, falling
+      # back to Windows x64" — and an emulated x64 process cannot load the
+      # arm64 library under test. The tests run on the same Dart release,
+      # native.
+      - name: Dart for arm64, for the tests
+        if: matrix.target == 'windows-arm64'
+        shell: bash
+        run: |
+          version=$(dart --version 2>&1 | sed -E 's/.*version: ([0-9.]+).*/\1/')
+          curl -fsSL -o "$RUNNER_TEMP/dart.zip" \
+            "https://storage.googleapis.com/dart-archive/channels/stable/release/$version/sdk/dartsdk-windows-arm64-release.zip"
+          unzip -q "$RUNNER_TEMP/dart.zip" -d "$RUNNER_TEMP/dart-arm64"
+          echo "TEST_DART=$RUNNER_TEMP/dart-arm64/dart-sdk/bin/dart.exe" >> "$GITHUB_ENV"
+          "$RUNNER_TEMP/dart-arm64/dart-sdk/bin/dart.exe" --version
 
       - uses: actions/setup-python@v5
         with:
@@ -69,7 +102,8 @@ jobs:
             --out dist
 
       - name: Package tests against it
-        run: dart test
+        shell: bash
+        run: '"${TEST_DART:-dart}" test'
 
       - name: Example, headless crash
         if: runner.os == 'Linux'
@@ -86,13 +120,31 @@ jobs:
           done
           ls -la "$db"/*/*.dmp
 
-      - name: Example, Windows build
-        if: runner.os == 'Windows'
+      # The Windows database keeps every report in reports/, not by state.
+      #
+      # x64 only. On Arm the Flutter tool is the x64 fallback above, and
+      # `flutter build windows` builds for the architecture the tool runs as:
+      # an x64 app, which needs the windows-x64 build, not this job's. The
+      # arm64 library and handler are proved by the package tests above, run
+      # native.
+      - name: Example, headless crash
+        if: matrix.target == 'windows-x64'
         working-directory: example
         shell: bash
         run: |
           flutter build windows --release
-          find build/windows -name crashpad_handler.exe | grep -q .
+          exe=$(find build/windows -path '*/runner/Release/fl_crashpad_example.exe')
+          bundle=$(dirname "$exe")
+          test -f "$bundle/crashpad_handler.exe"
+          test -f "$bundle/crashpad_wer.dll"
+          # The app is given a Windows path; the shell globs the POSIX one.
+          db=$(mktemp -d)
+          "$exe" --database="$(cygpath -w "$db")" --crash=segfault || true
+          for i in $(seq 1 100); do
+            ls "$db"/reports/*.dmp >/dev/null 2>&1 && break
+            sleep 0.1
+          done
+          ls -la "$db"/reports/*.dmp
 
       - name: Example, macOS build
         if: runner.os == 'macOS'
