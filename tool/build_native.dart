@@ -411,8 +411,13 @@ class _Builder {
         // libstdc++ that has to match theirs.
         args.add('link_libstdcpp_statically=true');
       case 'macos':
-        // Flutter's own floor. mini_chromium's default is 13.0.
-        args.add('mac_deployment_target="10.15"');
+        // macOS 12.0, not Flutter's 10.15 floor: at the pinned revision
+        // Crashpad's util/mac/mac_util.cc uses kIOMainPortDefault, which IOKit
+        // marks introduced in 12.0 and uses unguarded, so -Werror rejects any
+        // lower target — on every SDK that carries the symbol, which is why a
+        // 10.15 build of this revision never compiled. 12.0 is also this app's
+        // own floor, and clears the separate libc++ note (its floor is 11.0).
+        args.add('mac_deployment_target="12.0"');
       case 'android':
         args
           ..add('target_os="android"')
@@ -440,7 +445,16 @@ class _Builder {
             'target_environment="${target == NativeTarget.iosSimulator ? 'simulator' : 'device'}"',
           )
           // Flutter's own floor. mini_chromium's default is 14.0.
-          ..add('ios_deployment_target="13.0"');
+          ..add('ios_deployment_target="13.0"')
+          // The library is signed later, by Xcode, when the app embeds it —
+          // there is nothing to run at build time, so nothing to sign. Left on
+          // (mini_chromium's default), a device build runs find_signing_identity.py
+          // at `gn gen` and fails on a machine with no "Apple Development"
+          // identity in its keychain, which a build machine need not have.
+          ..add('ios_enable_code_signing=false');
+        // As on macOS: Xcode 26's libc++ floors iOS at 15.0 with a #warning
+        // that -Werror promotes. Silence just that note to keep the 13.0 floor.
+        cflags.add('-Wno-error=#warnings');
       case 'windows':
         // The shared CRT, so that Crashpad's SIGABRT handler is registered in
         // the same C runtime the app, the Flutter engine and any Rust in the

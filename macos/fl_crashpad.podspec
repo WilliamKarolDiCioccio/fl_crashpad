@@ -20,7 +20,7 @@ Pod::Spec.new do |s|
   # place for Helpers/ — for a pod without sources.
   s.source_files     = 'Classes/**/*'
   s.dependency 'FlutterMacOS'
-  s.platform         = :osx, '10.15'
+  s.platform         = :osx, '12.0'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
 
   s.script_phase = {

@@ -88,6 +88,15 @@ crashpad_loadable_module("fl_crashpad_native") {
           rebase_path("exports/macos.exp", root_build_dir),
       "-Wl,-install_name,@rpath/libfl_crashpad_native.dylib",
     ]
+    if (crashpad_is_ios) {
+      # Crashpad's util uses UIApplication, UIDevice and their notifications in
+      # IOSSystemDataCollector, but its BUILD.gn names UIKit for none of its
+      # targets: it leaves the framework to the app that links the static
+      # library. This is a standalone dylib and has no such app, so it links
+      # UIKit itself. (macOS's frameworks do propagate from util; iOS's UIKit
+      # does not, because nothing there declares it.)
+      frameworks = [ "UIKit.framework" ]
+    }
   } else if (crashpad_is_win) {
     sources += [ "exports/windows.def" ]
   }

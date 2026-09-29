@@ -1,0 +1,22 @@
+PODS:
+  - fl_crashpad (0.1.0):
+    - FlutterMacOS
+  - FlutterMacOS (1.0.0)
+
+DEPENDENCIES:
+  - fl_crashpad (from `Flutter/ephemeral/.symlinks/plugins/fl_crashpad/macos`)
+  - FlutterMacOS (from `Flutter/ephemeral`)
+
+EXTERNAL SOURCES:
+  fl_crashpad:
+    :path: Flutter/ephemeral/.symlinks/plugins/fl_crashpad/macos
+  FlutterMacOS:
+    :path: Flutter/ephemeral
+
+SPEC CHECKSUMS:
+  fl_crashpad: fca20dcda945bdac3f4571be8d231f7f2f8476e3
+  FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
+
+PODFILE CHECKSUM: 669bbeecd18337d5521adac4f9c3072e870dcc91
+
+COCOAPODS: 1.17.0
