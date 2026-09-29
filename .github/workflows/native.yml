@@ -7,6 +7,9 @@
 # on every pull request or push: nine jobs building Crashpad from source are
 # too much to spend on a change that does not touch the native half.
 #
+#   gh workflow run native.yml --ref <branch>   # build and test
+#   git push origin native-v<version>           # ...and publish
+#
 # A tag's archives go to a draft release, with the command that records their
 # digests in native/artifacts.lock.json. The lock is updated by hand from that
 # command and released with the package, so a digest is never trusted that
