@@ -119,8 +119,14 @@ jobs:
           ls -la "$db"/*/*.dmp
 
       # The Windows database keeps every report in reports/, not by state.
+      #
+      # x64 only. On Arm the Flutter tool is the x64 fallback above, and
+      # `flutter build windows` builds for the architecture the tool runs as:
+      # an x64 app, which needs the windows-x64 build, not this job's. The
+      # arm64 library and handler are proved by the package tests above, run
+      # native.
       - name: Example, headless crash
-        if: runner.os == 'Windows'
+        if: matrix.target == 'windows-x64'
         working-directory: example
         shell: bash
         run: |
