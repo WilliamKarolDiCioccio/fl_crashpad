@@ -44,9 +44,22 @@ jobs:
         run: echo "version=$(jq -r .flutter .fvmrc)" >> "$GITHUB_OUTPUT"
 
       - uses: subosito/flutter-action@v2
+        if: matrix.target != 'windows-arm64'
         with:
           flutter-version: ${{ steps.fvm.outputs.version }}
           cache: true
+
+      # Flutter publishes no Windows-on-Arm SDK archive, so the action finds
+      # nothing to install there. A checkout of the release tag is the same
+      # SDK, and fetches the Dart SDK for the machine it runs on.
+      - name: Flutter, from its release tag
+        if: matrix.target == 'windows-arm64'
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "${{ steps.fvm.outputs.version }}" \
+            https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/flutter/bin/flutter" --version
 
       - uses: actions/setup-python@v5
         with:
@@ -86,13 +99,25 @@ jobs:
           done
           ls -la "$db"/*/*.dmp
 
-      - name: Example, Windows build
+      # The Windows database keeps every report in reports/, not by state.
+      - name: Example, headless crash
         if: runner.os == 'Windows'
         working-directory: example
         shell: bash
         run: |
           flutter build windows --release
-          find build/windows -name crashpad_handler.exe | grep -q .
+          exe=$(find build/windows -path '*/runner/Release/fl_crashpad_example.exe')
+          bundle=$(dirname "$exe")
+          test -f "$bundle/crashpad_handler.exe"
+          test -f "$bundle/crashpad_wer.dll"
+          # The app is given a Windows path; the shell globs the POSIX one.
+          db=$(mktemp -d)
+          "$exe" --database="$(cygpath -w "$db")" --crash=segfault || true
+          for i in $(seq 1 100); do
+            ls "$db"/reports/*.dmp >/dev/null 2>&1 && break
+            sleep 0.1
+          done
+          ls -la "$db"/reports/*.dmp
 
       - name: Example, macOS build
         if: runner.os == 'macOS'
