@@ -62,6 +62,8 @@ namespace {
 using crashpad::CrashpadClient;
 using crashpad::CrashReportDatabase;
 using crashpad::SimpleStringDictionary;
+// Not `UUID` at global scope: <windows.h> has one too (rpc.h), and the
+// ABI functions below live outside this namespace, where the two collide.
 using crashpad::UUID;
 
 // ---------------------------------------------------------------------------
@@ -780,7 +782,7 @@ int32_t fl_crashpad_database_reports(const char* database_path,
 int32_t fl_crashpad_database_request_upload(const char* database_path,
                                             const char* report_id,
                                             char** error) {
-  UUID uuid;
+  crashpad::UUID uuid;
   if (!ParseReportId(report_id, &uuid)) {
     return Fail(error, FL_CRASHPAD_INVALID_ARGUMENT,
                 "not a report id: " + std::string(report_id ? report_id : ""));
@@ -805,7 +807,7 @@ int32_t fl_crashpad_database_request_upload(const char* database_path,
 int32_t fl_crashpad_database_delete_report(const char* database_path,
                                            const char* report_id,
                                            char** error) {
-  UUID uuid;
+  crashpad::UUID uuid;
   if (!ParseReportId(report_id, &uuid)) {
     return Fail(error, FL_CRASHPAD_INVALID_ARGUMENT,
                 "not a report id: " + std::string(report_id ? report_id : ""));
@@ -870,7 +872,7 @@ int32_t fl_crashpad_database_record_upload(const char* database_path,
   // Crashpad's own uploader gives up after this many (on iOS, the one
   // platform where it retries at all).
   static constexpr int kAttempts = 5;
-  UUID uuid;
+  crashpad::UUID uuid;
   if (!ParseReportId(report_id, &uuid)) {
     return Fail(error, FL_CRASHPAD_INVALID_ARGUMENT,
                 "not a report id: " + std::string(report_id ? report_id : ""));
