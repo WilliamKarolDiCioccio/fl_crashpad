@@ -1,0 +1,13 @@
+# Generated from artifacts.lock.json by tool/update_lock.dart. Do not edit.
+artifacts 0.1.0
+crashpad ce308a86daa85e65df219ff5fb385095b0a1c467
+baseUrl https://github.com/WilliamKarolDiCioccio/fl_crashpad/releases/download/native-v0.1.0/
+linux-x64 -
+linux-arm64 -
+windows-x64 -
+windows-arm64 -
+macos-universal -
+android-arm64 -
+android-x64 -
+ios-arm64 -
+ios-simulator -

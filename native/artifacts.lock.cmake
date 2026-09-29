@@ -1,0 +1,13 @@
+# Generated from artifacts.lock.json by tool/update_lock.dart. Do not edit.
+set(FL_CRASHPAD_ARTIFACTS_VERSION "0.1.0")
+set(FL_CRASHPAD_CRASHPAD_REVISION "ce308a86daa85e65df219ff5fb385095b0a1c467")
+set(FL_CRASHPAD_RELEASE_BASE_URL "https://github.com/WilliamKarolDiCioccio/fl_crashpad/releases/download/native-v0.1.0/")
+set(FL_CRASHPAD_SHA256_linux_x64 "")
+set(FL_CRASHPAD_SHA256_linux_arm64 "")
+set(FL_CRASHPAD_SHA256_windows_x64 "")
+set(FL_CRASHPAD_SHA256_windows_arm64 "")
+set(FL_CRASHPAD_SHA256_macos_universal "")
+set(FL_CRASHPAD_SHA256_android_arm64 "")
+set(FL_CRASHPAD_SHA256_android_x64 "")
+set(FL_CRASHPAD_SHA256_ios_arm64 "")
+set(FL_CRASHPAD_SHA256_ios_simulator "")

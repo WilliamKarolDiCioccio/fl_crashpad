@@ -1,0 +1,28 @@
+/* fl_crashpad.h's exports, and CrashpadHandlerMain for the handler
+ * trampoline; linux.map, android.map, macos.exp and windows.def
+ * change together. */
+{
+  global:
+    fl_crashpad_abi_version;
+    fl_crashpad_crashpad_revision;
+    fl_crashpad_start;
+    fl_crashpad_is_started;
+    fl_crashpad_annotation_set;
+    fl_crashpad_annotation_remove;
+    fl_crashpad_annotation_clear;
+    fl_crashpad_initialize_signal_stack_for_thread;
+    fl_crashpad_dump_without_crash;
+    fl_crashpad_crash_for_testing;
+    fl_crashpad_database_get_uploads_enabled;
+    fl_crashpad_database_set_uploads_enabled;
+    fl_crashpad_database_reports;
+    fl_crashpad_database_request_upload;
+    fl_crashpad_database_delete_report;
+    fl_crashpad_report_upload_fields;
+    fl_crashpad_database_record_upload;
+    fl_crashpad_process_pending_dumps;
+    fl_crashpad_free;
+    CrashpadHandlerMain;
+  local:
+    *;
+};

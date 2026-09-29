@@ -1,0 +1,94 @@
+# fl_crashpad's targets, built from inside a Crashpad checkout. See
+# fl_crashpad.gn for how this file is reached.
+
+import("../../build/crashpad_buildconfig.gni")
+
+declare_args() {
+  # The Crashpad revision being built, compiled into the library so that
+  # start() can refuse a handler from a different build.
+  fl_crashpad_crashpad_revision = ""
+}
+
+assert(fl_crashpad_crashpad_revision != "",
+       "set fl_crashpad_crashpad_revision; tool/build_native.dart does")
+
+# What a release archive holds, per OS:
+#   desktop  the library and the handler executable (and crashpad_wer on Windows)
+#   Android  the library, which is also the handler, and the trampoline the
+#            system linker starts it through
+#   iOS      the library alone: crashes are handled inside the process
+group("root") {
+  deps = [ ":fl_crashpad_native" ]
+  if (crashpad_is_android) {
+    deps += [ "../../handler:crashpad_handler_trampoline" ]
+  } else if (!crashpad_is_ios) {
+    deps += [ "../../handler:crashpad_handler" ]
+  }
+  if (crashpad_is_win) {
+    deps += [ "../../handler/win/wer:crashpad_wer" ]
+  }
+}
+
+crashpad_loadable_module("fl_crashpad_native") {
+  if (!crashpad_is_win) {
+    output_name = "libfl_crashpad_native"
+  }
+  if (crashpad_is_apple) {
+    # mini_chromium's module tool names every POSIX module .so.
+    output_extension = "dylib"
+  }
+  sources = [
+    "include/fl_crashpad.h",
+    "src/fl_crashpad.cc",
+  ]
+  include_dirs = [ "include" ]
+  defines = [ "FL_CRASHPAD_CRASHPAD_REVISION=\"$fl_crashpad_crashpad_revision\"" ]
+  deps = [
+    "../../client",
+    "../../client:common",
+    "../../minidump",
+    "../../snapshot",
+    "../../third_party/mini_chromium:base",
+    "../../util",
+
+    # BreakpadHTTPFormParametersFromMinidump, for the upload the package
+    # makes itself on mobile: the same form fields Crashpad's uploader sends.
+    "../../handler:common",
+  ]
+  if (crashpad_is_android) {
+    # On Android the library is the handler too: the trampoline dlopens it in
+    # the handler process and calls CrashpadHandlerMain.
+    deps += [
+      "../../handler",
+      "../../handler:crashpad_handler_main",
+    ]
+  }
+  configs = [ "../..:crashpad_config" ]
+
+  # Only fl_crashpad_* leaves the library. Everything else — Crashpad,
+  # mini_chromium, the C++ runtime on Linux — stays private to it, so a second
+  # copy of any of them elsewhere in the process cannot be bound to ours.
+  if (crashpad_is_linux || crashpad_is_android) {
+    exports = "exports/linux.map"
+    if (crashpad_is_android) {
+      # CrashpadHandlerMain as well, for the trampoline.
+      exports = "exports/android.map"
+    }
+    inputs = [ exports ]
+    ldflags = [
+      "-Wl,--version-script=" + rebase_path(exports, root_build_dir),
+      "-Wl,--exclude-libs,ALL",
+      "-Wl,-Bsymbolic",
+      "-Wl,-z,defs",
+    ]
+  } else if (crashpad_is_apple) {
+    inputs = [ "exports/macos.exp" ]
+    ldflags = [
+      "-Wl,-exported_symbols_list," +
+          rebase_path("exports/macos.exp", root_build_dir),
+      "-Wl,-install_name,@rpath/libfl_crashpad_native.dylib",
+    ]
+  } else if (crashpad_is_win) {
+    sources += [ "exports/windows.def" ]
+  }
+}

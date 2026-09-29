@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "artifacts": "0.1.0",
+  "crashpad": {
+    "url": "https://chromium.googlesource.com/crashpad/crashpad",
+    "revision": "ce308a86daa85e65df219ff5fb385095b0a1c467"
+  },
+  "dependencies": {
+    "third_party/mini_chromium/mini_chromium": {
+      "url": "https://chromium.googlesource.com/chromium/mini_chromium",
+      "revision": "c029983310e7b806aa4c75463d3a013c9558abde",
+      "os": [
+        "linux",
+        "macos",
+        "windows",
+        "android",
+        "ios"
+      ]
+    },
+    "third_party/lss/lss": {
+      "url": "https://chromium.googlesource.com/linux-syscall-support",
+      "revision": "9719c1e1e676814c456b55f5f070eabad6709d31",
+      "os": [
+        "linux",
+        "android"
+      ]
+    },
+    "third_party/zlib/zlib": {
+      "url": "https://chromium.googlesource.com/chromium/src/third_party/zlib",
+      "revision": "fef58692c1d7bec94c4ed3d030a45a1832a9615d",
+      "os": [
+        "windows"
+      ]
+    }
+  },
+  "tools": {
+    "gn": "git_revision:5e19d2fb166fbd4f6f32147fbb2f497091a54ad8",
+    "ninja": "version:2@1.8.2.chromium.3"
+  },
+  "release": {
+    "baseUrl": "https://github.com/WilliamKarolDiCioccio/fl_crashpad/releases/download/native-v0.1.0/"
+  },
+  "targets": {
+    "linux-x64": {
+      "sha256": null
+    },
+    "linux-arm64": {
+      "sha256": null
+    },
+    "windows-x64": {
+      "sha256": null
+    },
+    "windows-arm64": {
+      "sha256": null
+    },
+    "macos-universal": {
+      "sha256": null
+    },
+    "android-arm64": {
+      "sha256": null
+    },
+    "android-x64": {
+      "sha256": null
+    },
+    "ios-arm64": {
+      "sha256": null
+    },
+    "ios-simulator": {
+      "sha256": null
+    }
+  }
+}

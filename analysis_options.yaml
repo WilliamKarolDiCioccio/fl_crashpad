@@ -1,0 +1,13 @@
+# `lints`, not `flutter_lints`: nothing in lib/ may import Flutter (see the
+# pubspec), and a ruleset that assumes it would be the first step back.
+include: package:lints/recommended.yaml
+
+analyzer:
+  exclude:
+    - build/**
+
+linter:
+  rules:
+    # archive 4 made extractArchiveToDisk asynchronous; an un-awaited call
+    # unpacked one file of a release and reported success.
+    - unawaited_futures

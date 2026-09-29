@@ -1,0 +1,2 @@
+# The crash tests' child process: analysed with the defaults, since it does
+# not depend on the lints the package includes.

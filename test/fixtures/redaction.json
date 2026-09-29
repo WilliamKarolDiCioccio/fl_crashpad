@@ -1,0 +1,209 @@
+{
+  "version": 1,
+  "note": "The redaction contract, run by the Dart suite and by crates/ripple-telemetry. Generated from the Dart Redactor and reviewed. See docs/specs/session-logs.md section 7.",
+  "environments": {
+    "default": {
+      "home": "/home/ada",
+      "userName": "ada",
+      "windows": false,
+      "exemptRoots": [
+        "/opt/ripple_effect"
+      ],
+      "projectRoots": [
+        "/home/ada/stories",
+        "/home/ada/stories/elsenmar"
+      ]
+    },
+    "nonAsciiUser": {
+      "home": "/home/josé",
+      "userName": "josé",
+      "windows": false,
+      "exemptRoots": [],
+      "projectRoots": []
+    }
+  },
+  "cases": [
+    {
+      "name": "home becomes a tilde",
+      "why": "home goes before the username, or the folder names survive and the one part that was never secret is removed",
+      "environment": "default",
+      "in": "could not write /home/ada/tales/act1.md",
+      "out": "could not write ~/tales/act1.md"
+    },
+    {
+      "name": "a project root wins over home",
+      "why": "registered at runtime; it is the folder somebody keeps unpublished work in",
+      "environment": "default",
+      "in": "opened /home/ada/stories/act1.graph.json",
+      "out": "opened <project>/act1.graph.json"
+    },
+    {
+      "name": "the deepest project root wins",
+      "why": "sorted longest first, so a project nested in another is named for itself",
+      "environment": "default",
+      "in": "opened /home/ada/stories/elsenmar/act1.graph.json",
+      "out": "opened <project>/act1.graph.json"
+    },
+    {
+      "name": "a bare username is mopped up afterwards",
+      "why": "the home rule has already dealt with where it actually appears",
+      "environment": "default",
+      "in": "the account ada has no write permission",
+      "out": "the account <user> has no write permission"
+    },
+    {
+      "name": "an email goes before the username",
+      "why": "most usernames are the local part of one",
+      "environment": "default",
+      "in": "wrote to ada@example.com",
+      "out": "wrote to <email>"
+    },
+    {
+      "name": "a non-ASCII local part is still an email",
+      "why": "THE ASCII-class case. Dart \\w is ASCII and Rust \\w is Unicode-aware, so neither shorthand may be trusted; both spell the class out. This used to go into a log file untouched.",
+      "environment": "default",
+      "in": "wrote to josé@example.com",
+      "out": "wrote to <email>"
+    },
+    {
+      "name": "so is one in a non-Latin script",
+      "why": "same rule, and the case a transliteration of either engine gets wrong",
+      "environment": "default",
+      "in": "wrote to 李明@example.com",
+      "out": "wrote to <email>"
+    },
+    {
+      "name": "a non-ASCII domain too",
+      "why": "this used to miss the email rule and then be caught by the username one, which replaced the local part and left the domain standing",
+      "environment": "default",
+      "in": "wrote to ada@exämple.com",
+      "out": "wrote to <email>"
+    },
+    {
+      "name": "a username ending in a non-ASCII letter is still replaced",
+      "why": "the same trap one rule over: a word boundary after an accented letter is not a boundary at all, so this name was never redacted while `renée` was",
+      "environment": "nonAsciiUser",
+      "in": "the account josé has no write permission",
+      "out": "the account <user> has no write permission"
+    },
+    {
+      "name": "and its home directory still becomes a tilde",
+      "why": "the home rule is a string replacement and never had the problem; this pins that the two agree",
+      "environment": "nonAsciiUser",
+      "in": "could not write /home/josé/tales/act1.md",
+      "out": "could not write ~/tales/act1.md"
+    },
+    {
+      "name": "a github token",
+      "why": "credentials go first of all, before another rule can cut one in half",
+      "environment": "default",
+      "in": "auth failed for ghp_ABCDEFGHIJKLMNOP0123456789",
+      "out": "auth failed for <redacted>"
+    },
+    {
+      "name": "a github pat",
+      "why": "the newer prefix, documented and stable",
+      "environment": "default",
+      "in": "auth failed for github_pat_ABCDEFGHIJKLMNOPQRSTUV0123",
+      "out": "auth failed for <redacted>"
+    },
+    {
+      "name": "an api key",
+      "why": "the third documented prefix",
+      "environment": "default",
+      "in": "sent sk-ABCDEFGHIJKLMNOP0123",
+      "out": "sent <redacted>"
+    },
+    {
+      "name": "an authorization header keeps its scheme",
+      "why": "knowing which kind of credential was in hand is diagnostic; the value never is",
+      "environment": "default",
+      "in": "Authorization: Bearer abcdefghijklmnop",
+      "out": "Authorization: Bearer <redacted>"
+    },
+    {
+      "name": "a named secret keeps its key",
+      "why": "the key admits what it is and that is the useful half",
+      "environment": "default",
+      "in": "config: api_key=hunter2secret, retries=3",
+      "out": "config: api_key=<redacted>, retries=3"
+    },
+    {
+      "name": "url user info",
+      "why": "the two things before the at-sign",
+      "environment": "default",
+      "in": "cloning https://someone:hunter2@example.com/repo.git",
+      "out": "cloning https://<redacted>@example.com/repo.git"
+    },
+    {
+      "name": "a residual path keeps its basename",
+      "why": "a log that says <path> twelve times looks like evidence and is not",
+      "environment": "default",
+      "in": "read /mnt/backup/archive/act1.graph.json",
+      "out": "read <path>/act1.graph.json"
+    },
+    {
+      "name": "an install directory is left standing",
+      "why": "which package is this? is the first thing anybody asks",
+      "environment": "default",
+      "in": "running from /opt/ripple_effect/ripple_effect",
+      "out": "running from /opt/ripple_effect/ripple_effect"
+    },
+    {
+      "name": "a url is not mangled into a path",
+      "why": "a preceding / or : means this is the tail of a URL",
+      "environment": "default",
+      "in": "see https://github.com/owner/repo for more",
+      "out": "see https://github.com/owner/repo for more"
+    },
+    {
+      "name": "an ip address goes",
+      "why": "says where somebody is",
+      "environment": "default",
+      "in": "connected to 203.0.113.42:8080",
+      "out": "connected to <ip>:8080"
+    },
+    {
+      "name": "a loopback stays",
+      "why": "identifies nobody and is the diagnosis for the local endpoint",
+      "environment": "default",
+      "in": "listening on 127.0.0.1:4000",
+      "out": "listening on 127.0.0.1:4000"
+    },
+    {
+      "name": "an ipv6 loopback stays too",
+      "why": "same argument",
+      "environment": "default",
+      "in": "listening on ::1 port 4000",
+      "out": "listening on ::1 port 4000"
+    },
+    {
+      "name": "a time of day is not an address",
+      "why": "at least three colons, so hh:mm:ss survives",
+      "environment": "default",
+      "in": "finished at 14:03:11 with no errors",
+      "out": "finished at 14:03:11 with no errors"
+    },
+    {
+      "name": "an empty string is not worth any of this",
+      "why": "the early return",
+      "environment": "default",
+      "in": "",
+      "out": ""
+    },
+    {
+      "name": "digits in another script are not an address",
+      "why": "the other half of the ASCII-class trap. Dart’s \\d is ASCII so this is left alone; Rust’s \\d is Unicode and would redact it, so the port spells the class [0-9]. Over-redaction rather than a leak, but a log that says <ip> about something that is not one is evidence that is not.",
+      "environment": "default",
+      "in": "connected to ٢٠٣.٠.١١٣.٤٢",
+      "out": "connected to ٢٠٣.٠.١١٣.٤٢"
+    },
+    {
+      "name": "an address touching a non-ASCII word is still an address",
+      "why": "THE case that makes (?-u:\\b) load-bearing, and the one a naive port leaks on. Dart’s \\b is ASCII, so there is a boundary between 連接 and the digits and the address is removed. Rust’s \\b is Unicode-aware, so a transliteration finds no boundary, does not match, and writes the address down.",
+      "environment": "default",
+      "in": "連接203.0.113.42",
+      "out": "連接<ip>"
+    }
+  ]
+}

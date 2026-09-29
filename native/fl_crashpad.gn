@@ -1,0 +1,12 @@
+# The GN dotfile for building fl_crashpad inside a Crashpad checkout.
+#
+# tool/build_native.dart copies native/ to <crashpad>/third_party/fl_crashpad/
+# and runs `gn gen --root=<crashpad> --dotfile=<this file>`. It is Crashpad's
+# own .gn with one line added, `root`, so that the build starts from our
+# target instead of Crashpad's default group: nothing upstream is edited, and
+# the library is compiled by exactly the toolchain, flags and CRT that compile
+# the handler it will talk to.
+
+buildconfig = "//build/BUILDCONFIG.gn"
+script_executable = "python3"
+root = "//third_party/fl_crashpad:root"

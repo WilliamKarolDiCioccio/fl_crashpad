@@ -1,0 +1,32 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Flutter/Dart/Pub related
+# Libraries should not include pubspec.lock, per https://dart.dev/guides/libraries/private-files#pubspeclock.
+/pubspec.lock
+**/doc/api/
+.dart_tool/
+.flutter-plugins-dependencies
+/build/
+/coverage/
+test/crasher/pubspec.lock
+
+# FVM version cache — the pin itself lives in .fvmrc and is tracked.
+.fvm/
+# Internal notes for whoever works on the package; the README is what pub.dev shows.
+CLAUDE.md

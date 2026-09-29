@@ -1,0 +1,20 @@
+# A .pubignore replaces .gitignore for `dart pub publish`, so everything the
+# .gitignore keeps out is repeated here.
+.dart_tool/
+.fvm/
+build/
+coverage/
+pubspec.lock
+*.iml
+.idea/
+
+# Internal notes, CI, the README's screenshots (served from GitHub), and the
+# example's build output.
+CLAUDE.md
+doc/
+.github/
+.pre-commit-config.yaml
+example/build/
+example/.dart_tool/
+test/crasher/.dart_tool/
+test/crasher/pubspec.lock

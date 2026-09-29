@@ -1,0 +1,10 @@
+name: fl_crashpad_crasher
+description: The child process of fl_crashpad's crash tests.
+publish_to: none
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  fl_crashpad:
+    path: ../..
