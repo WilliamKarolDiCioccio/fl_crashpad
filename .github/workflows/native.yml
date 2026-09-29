@@ -13,7 +13,12 @@
 # A tag's archives go to a draft release, with the command that records their
 # digests in native/artifacts.lock.json. The lock is updated by hand from that
 # command and released with the package, so a digest is never trusted that
-# nobody looked at.
+# nobody looked at. **The draft has to be published by hand too**, before the
+# package: a draft's files are private, and every download from it fails.
+#
+# The tag must be `native-v` + the lock's `artifacts`, which names the
+# archives and fills the release URL the lock downloads from; the release job
+# refuses a tag that does not match.
 #
 # The glibc floor of a Linux archive is the glibc it was built against, which
 # is why the Linux jobs run on the oldest runners there are.
@@ -305,12 +310,27 @@ jobs:
           path: dist
           merge-multiple: true
 
+      # The lock downloads from native-v<artifacts>, so archives released
+      # under any other tag would never be found.
+      - name: The tag is the lock's version
+        run: |
+          expected="${GITHUB_REF_NAME#native-v}"
+          for file in dist/*.tar.gz; do
+            case "$(basename "$file")" in
+              "fl_crashpad-native-$expected-"*) ;;
+              *) echo "::error::$file is not version $expected; tag native-v<artifacts in the lock>"
+                 exit 1 ;;
+            esac
+          done
+
       - name: Digests, and the command that records them
         run: |
           cd dist
           sha256sum *.tar.gz > SHA256SUMS
           {
-            echo 'Record these in the lock, then commit and release the package:'
+            echo '1. **Publish this release.** Until then its files are private,'
+            echo '   and every download the lock makes from it fails.'
+            echo '2. Record the digests in the lock, commit, and publish the package:'
             echo
             echo '```sh'
             printf 'dart run tool/update_lock.dart'

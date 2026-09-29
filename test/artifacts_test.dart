@@ -14,13 +14,16 @@ void main() {
   late HttpServer server;
   late List<int> archive;
   late int port;
+  late List<String> requested;
 
   setUp(() async {
     temp = Directory.systemTemp.createTempSync('fl_crashpad_artifacts_');
     archive = _archive(NativeTarget.linuxX64);
     server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     port = server.port;
+    requested = [];
     server.listen((request) {
+      requested.add(request.uri.path);
       request.response
         ..add(archive)
         ..close();
@@ -40,7 +43,7 @@ void main() {
         'schema': 1,
         'artifacts': '9.9.9',
         'crashpad': {'url': 'x', 'revision': 'r'},
-        'release': {'baseUrl': 'http://127.0.0.1:$port/'},
+        'release': {'baseUrl': 'http://127.0.0.1:$port/native-v{artifacts}/'},
         'targets': {
           target.id: {'sha256': sha256},
         },
@@ -59,6 +62,10 @@ void main() {
 
       expect(result.isComplete, isTrue);
       expect(result.directory.path, '${temp.path}/9.9.9/linux-x64');
+      // The release tag in the URL is the lock's version, filled in.
+      expect(requested, [
+        '/native-v9.9.9/fl_crashpad-native-9.9.9-linux-x64.tar.gz',
+      ]);
       if (!Platform.isWindows) {
         final mode = result.handler!.statSync().mode;
         expect(mode & 0x49, 0x49, reason: 'executable by everybody');
@@ -157,6 +164,12 @@ void main() {
     final lock = ArtifactLock.read(File('native/artifacts.lock.json'));
     final targets = (lock.json['targets']! as Map).keys;
     expect(targets, unorderedEquals(NativeTarget.values.map((t) => t.id)));
+    // The version once, not twice: a tag written into the URL by hand is
+    // left behind by the next bump, and every download then misses.
+    expect(
+      (lock.json['release']! as Map)['baseUrl'],
+      endsWith('/native-v{artifacts}/'),
+    );
     // CMake and the pod read these instead of the JSON; a digest recorded in
     // one and not the others would verify one half of a build and not the
     // other.

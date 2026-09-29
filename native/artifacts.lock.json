@@ -38,7 +38,7 @@
     "ninja": "version:2@1.8.2.chromium.3"
   },
   "release": {
-    "baseUrl": "https://github.com/WilliamKarolDiCioccio/fl_crashpad/releases/download/native-v0.1.0/"
+    "baseUrl": "https://github.com/WilliamKarolDiCioccio/fl_crashpad/releases/download/native-v{artifacts}/"
   },
   "targets": {
     "linux-x64": {

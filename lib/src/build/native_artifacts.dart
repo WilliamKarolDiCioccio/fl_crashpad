@@ -146,8 +146,14 @@ class ArtifactLock {
   String get crashpadRevision =>
       (json['crashpad']! as Map<String, Object?>)['revision']! as String;
 
+  /// Where the archives of [artifactsVersion] are downloaded from.
+  ///
+  /// The lock spells the version once: `{artifacts}` in `baseUrl` stands for
+  /// it, so the release tag in the URL cannot be left behind when the version
+  /// is bumped. CMake and the pod read the URL already filled in.
   Uri get releaseBaseUrl => Uri.parse(
-    (json['release']! as Map<String, Object?>)['baseUrl']! as String,
+    ((json['release']! as Map<String, Object?>)['baseUrl']! as String)
+        .replaceAll('{artifacts}', artifactsVersion),
   );
 
   /// The published digest for [target], or null before its first release.
