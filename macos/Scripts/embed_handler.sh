@@ -64,14 +64,23 @@ fi
 helpers="$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Helpers"
 mkdir -p "$helpers"
 cp -f "$handler" "$helpers/crashpad_handler"
-if [ -f "$source_dir/bin/crashpad_handler.rev" ]; then
-  cp -f "$source_dir/bin/crashpad_handler.rev" "$helpers/crashpad_handler.rev"
-fi
+# No crashpad_handler.rev here, unlike the other platforms: a framework's
+# Helpers/ is a code-only location to codesign, and a data file in it fails a
+# signed build with "code object is not signed at all". The stamp lets start()
+# refuse a handler from a different Crashpad build; without it the check is
+# skipped (ReadRevisionStamp returns empty, "taken on trust"), which is safe
+# here because the handler and the library are two files of the one macOS
+# artifact and so are always the same build.
 chmod 755 "$helpers/crashpad_handler"
 ln -sfh "Versions/Current/Helpers" "$TARGET_BUILD_DIR/$WRAPPER_NAME/Helpers"
 
-# Ad hoc, so that the framework's own signature — applied when the app embeds
-# it — seals a helper that is already signed. A Developer ID build re-signs
-# it first; the README has the order.
+# Ad hoc, inside-out: the handler first, then the framework that now holds it.
+# Signing the framework here rather than leaving it to the app is what lets an
+# ad-hoc or unsigned build work — CI, or a release built to run locally with no
+# team — where nothing else would sign it, and an app cannot be signed over an
+# unsigned nested framework ("code object is not signed at all"). A Developer
+# ID build re-signs both, inside-out, first; the README has the order.
 codesign --force --sign - --options runtime --timestamp=none \
   "$helpers/crashpad_handler"
+codesign --force --sign - --timestamp=none \
+  "$TARGET_BUILD_DIR/$WRAPPER_NAME"
