@@ -2,21 +2,23 @@
 # proved: each job runs the package's own tests against what it just built —
 # real crashes, real reports — before anything is kept.
 #
-# Every pull request and push runs the matrix. A tag `native-v<version>`
-# additionally publishes: the archives go to a draft release, with the
-# command that records their digests in native/artifacts.lock.json. The lock
-# is updated by hand from that command and released with the package, so a
-# digest is never trusted that nobody looked at.
+# Run by hand only — nine jobs on four operating systems are too much to
+# spend on every push:
+#
+#   gh workflow run native.yml --ref <branch>          # build and test
+#   gh workflow run native.yml --ref native-v<version> # ...and publish
+#
+# Dispatched on a tag `native-v<version>`, it also publishes: the archives go
+# to a draft release, with the command that records their digests in
+# native/artifacts.lock.json. The lock is updated by hand from that command
+# and released with the package, so a digest is never trusted that nobody
+# looked at. Pushing the tag starts nothing; dispatch on it once it is pushed.
 #
 # The glibc floor of a Linux archive is the glibc it was built against, which
 # is why the Linux jobs run on the oldest runners there are.
 name: native
 
 on:
-  push:
-    branches: [main]
-    tags: ['native-v*']
-  pull_request:
   workflow_dispatch:
 
 permissions:
