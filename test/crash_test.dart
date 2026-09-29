@@ -131,6 +131,14 @@ void main() {
   }
 
   for (final kind in CrashpadTestCrash.values) {
+    // macOS catches a stack overflow as a Mach EXC_BAD_ACCESS on the guard
+    // page, but cannot read the exhausted thread to write the dump; instead of
+    // terminating it resumes the thread, which re-faults forever. So a stack
+    // overflow on a native thread is not captured on macOS — see the README's
+    // macOS notes — and asserting it here would hang. Every other crash, and
+    // every kind on Linux and Windows, is caught.
+    final unsupported =
+        Platform.isMacOS && kind == CrashpadTestCrash.stackOverflowOnThread;
     test(
       '${kind.name} leaves a sanitised report with both annotations',
       () async {
@@ -138,6 +146,9 @@ void main() {
         expect(result.exitCode, isNot(0), reason: '${result.stderr}');
         await expectSanitisedReport(kind.name);
       },
+      skip: unsupported
+          ? 'macOS does not capture a stack overflow on a native thread'
+          : null,
     );
   }
 

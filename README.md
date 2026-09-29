@@ -326,6 +326,12 @@ Flutter build finds it.
   build says so.
 - The **App Sandbox** is not supported yet: `start` throws
   `CrashpadException(sandboxed)`.
+- A **stack overflow on a native thread is not captured**. macOS delivers the
+  guard-page fault to Crashpad, but the handler cannot read the exhausted
+  thread to write a dump and lets the process run on, re-faulting; there is no
+  per-thread signal stack to change that, as there is on Linux and Android.
+  Every other crash — a segfault, an `abort()`, an access violation in any
+  native code — is caught.
 - The handler is signed ad hoc during the build, which is all a development
   build or an unsigned app needs. **For Developer ID signing and
   notarisation**, sign inside-out — the handler, then the framework holding
