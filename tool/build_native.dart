@@ -343,8 +343,9 @@ class _Builder {
     _copyTree(Directory('${package.path}native'), destination);
     // Crashpad's .gn names `python3`, which a Windows machine may only have
     // as `python`. The copy is ours to adjust; native/ is left as it is.
-    if (Platform.isWindows &&
-        Process.runSync('where', ['python3']).exitCode != 0) {
+    // Run rather than looked up: Windows ships a `python3.exe` alias that
+    // `where` finds and that only offers the Microsoft Store, exiting 9009.
+    if (Platform.isWindows && !_runs('python3', ['--version'])) {
       final dotfile = File('${destination.path}/fl_crashpad.gn');
       dotfile.writeAsStringSync(
         dotfile.readAsStringSync().replaceFirst(
@@ -451,6 +452,10 @@ class _Builder {
           args.add('clang_path="${llvm.replaceAll(r'\', '/')}"');
         } else {
           args.add('mini_chromium_is_clang=false');
+          // Upstream builds only with clang, and cl.exe at /W4 /WX stops on
+          // warnings in Crashpad's own headers (C4201 in cpu_context.h), which
+          // this package does not patch. Still shown, no longer fatal.
+          cflags.add('/WX-');
         }
     }
     if (cflags.isNotEmpty) args.add('extra_cflags="${cflags.join(' ')}"');
@@ -653,6 +658,14 @@ class _Builder {
   static String get _tar => Platform.isWindows
       ? '${Platform.environment['SYSTEMROOT'] ?? r'C:\Windows'}\\System32\\tar.exe'
       : 'tar';
+
+  static bool _runs(String executable, List<String> arguments) {
+    try {
+      return Process.runSync(executable, arguments).exitCode == 0;
+    } on ProcessException {
+      return false;
+    }
+  }
 
   static String _safe(String version) =>
       version.replaceAll(RegExp('[^A-Za-z0-9._-]'), '_');

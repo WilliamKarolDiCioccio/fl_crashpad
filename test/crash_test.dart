@@ -42,7 +42,21 @@ void main() {
   tearDownAll(() => build.deleteSync(recursive: true));
 
   setUp(() => temp = Directory.systemTemp.createTempSync('fl_crashpad_'));
-  tearDown(() => temp.deleteSync(recursive: true));
+  // Windows refuses to delete a directory a process still has a file open in,
+  // and a handler lets go of its database only once it notices its last
+  // client has gone — a moment after the client itself.
+  tearDown(() async {
+    final deadline = DateTime.now().add(const Duration(seconds: 10));
+    while (true) {
+      try {
+        temp.deleteSync(recursive: true);
+        return;
+      } on FileSystemException {
+        if (DateTime.now().isAfter(deadline)) rethrow;
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+    }
+  });
 
   Future<ProcessResult> runCrasher(String kind) =>
       Process.run(crasher.path, [temp.path, handler.path, kind]);
@@ -74,7 +88,9 @@ void main() {
   Future<List<int>> rawDump() async {
     final deadline = DateTime.now().add(const Duration(seconds: 20));
     while (DateTime.now().isBefore(deadline)) {
-      for (final state in ['pending', 'completed']) {
+      // Crashpad's generic database files a report by state; the Windows one
+      // keeps every report in reports/ and the state in its metadata file.
+      for (final state in ['pending', 'completed', 'reports']) {
         final directory = Directory('${temp.path}/$state');
         if (!directory.existsSync()) continue;
         for (final file in directory.listSync().whereType<File>()) {
@@ -170,7 +186,10 @@ void main() {
         'wait',
         url,
       ]);
-      addTearDown(next.kill);
+      addTearDown(() async {
+        next.kill();
+        await next.exitCode;
+      });
       final deadline = DateTime.now().add(const Duration(seconds: 30));
       while (uploads.isEmpty && DateTime.now().isBefore(deadline)) {
         await Future<void>.delayed(const Duration(milliseconds: 20));

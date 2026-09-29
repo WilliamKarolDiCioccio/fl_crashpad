@@ -63,10 +63,14 @@ void main() {
         final mode = result.handler!.statSync().mode;
         expect(mode & 0x49, 0x49, reason: 'executable by everybody');
       }
-      // Nothing left behind but the one directory.
-      expect(Directory('${temp.path}/9.9.9').listSync().map((e) => e.path), [
-        '${temp.path}/9.9.9/linux-x64',
-      ]);
+      // Nothing left behind but the one directory. By name: a listing joins
+      // with the platform's separator, which on Windows is not the `/` above.
+      expect(
+        Directory(
+          '${temp.path}/9.9.9',
+        ).listSync().map((e) => e.uri.pathSegments.lastWhere((s) => s != '')),
+        ['linux-x64'],
+      );
     },
   );
 

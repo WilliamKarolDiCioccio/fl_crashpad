@@ -58,6 +58,10 @@ void main(List<String> args) async {
       ),
     );
 
+    // Rerun once the cache is filled: a missing file is a dependency too, and
+    // the build below may have found nothing there.
+    output.dependencies.add(resolver.cached(target).completeStamp.uri);
+
     final ArtifactDirectory artifacts;
     try {
       artifacts = await resolver.resolve(
@@ -65,8 +69,14 @@ void main(List<String> args) async {
         override: override == null ? null : Directory.fromUri(override),
       );
     } on ArtifactUnavailable catch (e) {
-      // A crash reporter that is silently missing from a release is worse
-      // than a build that stops and says why.
+      // This package's own checkout, where the native half is what
+      // `tool/build_native.dart` is about to make: failing here would stop
+      // the very command the message below tells people to run. No asset,
+      // and `Crashpad.isSupported` says so.
+      if (_buildingThisPackage(input)) return;
+      // Anywhere else — an app, the example — a crash reporter that is
+      // silently missing from a release is worse than a build that stops and
+      // says why.
       throw StateError('$e');
     }
 
@@ -117,4 +127,23 @@ void main(List<String> args) async {
       );
     }
   });
+}
+
+/// Whether fl_crashpad is the root package of this build, rather than a
+/// dependency of one.
+///
+/// A hook is not told the root, but the hooks runner puts every hook's output
+/// under the root package's `.dart_tool/`. An app, the example and
+/// `test/crasher` each have their own; only a build of this package itself
+/// writes under this package's.
+bool _buildingThisPackage(BuildInput input) {
+  String normalise(Uri uri) {
+    final path = uri.toFilePath().replaceAll(r'\', '/');
+    // Drive letters and folder names arrive in either case on Windows.
+    return Platform.isWindows ? path.toLowerCase() : path;
+  }
+
+  return normalise(
+    input.outputDirectoryShared,
+  ).startsWith(normalise(input.packageRoot.resolve('.dart_tool/')));
 }
