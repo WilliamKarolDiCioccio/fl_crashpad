@@ -223,8 +223,35 @@ to report a stack overflow. This is proved by breaking it: without the call,
 `crash_test.dart`'s `stackOverflowOnThread` goes red. The shim is loaded too
 late for Crashpad's `pthread_create` wrapper to help.
 
-**Windows fast-fail** goes through `crashpad_wer.dll` and an HKCU registry
-value the *app's installer* sets. The package only calls `RegisterWerModule`.
+**Windows fast-fail** goes through `crashpad_wer.dll`, which WER loads only
+if the process registered it (`RegisterWerModule`, in the shim) **and** it is
+listed under HKCU's `RuntimeExceptionHelperModules`. `start` writes that value
+itself (`lib/src/wer_registration.dart`, Dart FFI to advapi32, so no native
+change and no ABI bump), every start, before the handler launches:
+- **The package, not the installer**, because HKCU needs no elevation and an
+  installer step misses a zip, a portable copy, `flutter run` and a moved
+  app. It was the installer's until 2026-09-30, and ripple_effect had not
+  written it: fast-fail crashes went unreported there.
+- **Written, not checked**: one idempotent write, never stale after a move.
+- **Never removed** — the package has no uninstall hook. A value naming a DLL
+  that is gone is inert. An installer may still add it with
+  `uninsdeletevalue` to tidy up, and the README shows how.
+- **A refusal is swallowed.** A locked-down profile costs the fast-fail
+  crashes, not `start`.
+- **The error mode is the other half, and it was found the hard way.** With
+  the value written, the Windows runners still produced no report. The
+  process's error mode was `0x8003`: the Dart runtime sets
+  `SEM_NOGPFAULTERRORBOX`, which means Windows *does not invoke WER at all*,
+  and a child inherits it. With it cleared in the crasher, the report
+  appeared. So `start` clears it too (`letWerSeeFastFails`). What the bit was
+  there for was no crash dialog, so when it was set, `start` also calls
+  `WerSetFlags(WER_FAULT_REPORTING_NO_UI)`, and nobody sees a difference.
+  A crash Crashpad's filter catches never reaches WER, so this changes
+  nothing for them.
+- **Proved by `crash_test.dart`** on the Windows runners: the crasher's
+  `fastfail` kind calls `RaiseFailFastException` from kernel32 directly, and
+  the test expects the HKCU value and a sanitised report. Everywhere else
+  it is skipped.
 
 **Errors come back from the call that failed** — a status code, plus a
 malloc'd message freed with `fl_crashpad_free`. There is no thread-local
@@ -523,7 +550,8 @@ unproved:
   the upload. CI builds the library and the example but runs nothing; an
   end-to-end check like `tool/android_e2e.dart` is still to be written, on a
   Mac. The example takes `--crash=` only through Android's intent so far.
-- Windows fast-fail through WER, and a Developer ID–signed macOS app.
+- A Developer ID–signed macOS app. (Windows fast-fail through WER has a
+  test on the Windows runners since 2026-09-30.)
 - android-arm64 on hardware (x86_64 on an emulator is verified end to end).
 - The download path on macOS (the pod's `embed_handler.sh`) and on Windows
   against the live release; the Linux hook, `prefetch` and CMake are proved.
