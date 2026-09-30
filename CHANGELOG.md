@@ -7,6 +7,10 @@ change lives beside the code in `CLAUDE.md`; this file only says what changed.
 
 Android and iOS.
 
+- **Windows**: `Crashpad.start` lists `crashpad_wer.dll` in the registry under
+  the current user, so fast-fail crashes — a `/GS` failure, a Rust abort —
+  are reported with no installer step (`registerWerModule`, `true`).
+
 - **Android** 10 and later, arm64-v8a and x86_64: the handler is the library
   itself, started at a crash by the system linker through
   `libcrashpad_handler_trampoline.so`. Both travel through the build hook,

@@ -14,6 +14,7 @@ import 'options.dart';
 import 'report_store.dart';
 import 'sanitizer.dart';
 import 'uploader.dart';
+import 'wer_registration.dart';
 
 /// The ways [Crashpad.crashForTesting] can end the process.
 enum CrashpadTestCrash {
@@ -100,6 +101,13 @@ abstract final class Crashpad {
     final werModule = options.registerWerModule
         ? CrashpadHandler.defaultWerModule()
         : null;
+    final werModulePath = werModule != null && werModule.existsSync()
+        ? werModule.path
+        : null;
+    // Before the handler starts, so a fast-fail from the first moment is
+    // covered: WER reads the list when the crash happens, and the shim's
+    // registration only names the module. See wer_registration.dart.
+    if (werModulePath != null) registerWerModuleInRegistry(werModulePath);
     final upload = options.upload;
     final database = options.databaseDirectory.path;
 
@@ -180,9 +188,9 @@ abstract final class Crashpad {
         ..attachmentCount = options.attachments.length
         ..arguments = strings(options.handlerArguments)
         ..argumentCount = options.handlerArguments.length
-        ..werModulePath = werModule != null && werModule.existsSync()
-            ? string(werModule.path)
-            : nullptr;
+        ..werModulePath = werModulePath == null
+            ? nullptr
+            : string(werModulePath);
 
       return (nativeStart(config, error), null);
     });

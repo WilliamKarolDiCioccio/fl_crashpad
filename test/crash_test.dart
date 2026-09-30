@@ -152,6 +152,41 @@ void main() {
     );
   }
 
+  test('a fast-fail crash is reported through WER, now that start lists the '
+      'module in the registry itself', () async {
+    // crashpad_wer.dll beside the crasher, which is where an app has it.
+    final module = File('${crasher.parent.path}\\crashpad_wer.dll');
+    File('${handler.parent.path}\\crashpad_wer.dll').copySync(module.path);
+    const key =
+        r'HKCU\Software\Microsoft\Windows\Windows Error Reporting'
+        r'\RuntimeExceptionHelperModules';
+    // Named by the path start resolved, which may spell the temp folder
+    // differently from Directory.systemTemp (a short 8.3 name on a runner),
+    // so the value is found by the build folder's unique name.
+    final folder = build.uri.pathSegments.lastWhere((s) => s.isNotEmpty);
+    Future<List<String>> ours() async {
+      final listed = await Process.run('reg', ['query', key]);
+      return [
+        for (final line in '${listed.stdout}'.split('\n'))
+          if (line.contains(folder) && line.contains('REG_DWORD'))
+            line.substring(0, line.indexOf('REG_DWORD')).trim(),
+      ];
+    }
+
+    addTearDown(() async {
+      for (final name in await ours()) {
+        await Process.run('reg', ['delete', key, '/v', name, '/f']);
+      }
+    });
+
+    final result = await runCrasher('fastfail');
+    expect(result.exitCode, isNot(0), reason: '${result.stderr}');
+    expect(await ours(), [
+      endsWith(r'\crashpad_wer.dll'),
+    ], reason: 'start listed the module under HKCU');
+    await expectSanitisedReport('fastfail');
+  }, skip: Platform.isWindows ? null : 'fast-fail and WER are Windows only');
+
   test('dumpWithoutCrash leaves a report and the process carries on', () async {
     final result = await runCrasher('dump');
     expect(result.exitCode, 0, reason: '${result.stderr}');

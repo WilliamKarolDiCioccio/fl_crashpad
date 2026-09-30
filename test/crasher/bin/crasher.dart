@@ -9,10 +9,14 @@
 // already has mapped — and a page not yet touched is then read back without
 // its relocations, which crashes the runner, not the child.
 //
-// kind is a CrashpadTestCrash name; `dump` writes a report without a crash;
+// kind is a CrashpadTestCrash name; `fastfail` (Windows) ends the process
+// with RaiseFailFastException, which skips the unhandled-exception filter and
+// reaches Crashpad only through WER and crashpad_wer.dll; `dump` writes a
+// report without a crash;
 // `wait` starts Crashpad and stays alive until killed, so that a handler
 // sending reports on start has a client to stay up for. With an upload URL,
 // the user has consented.
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:fl_crashpad/fl_crashpad.dart';
@@ -36,6 +40,14 @@ Future<void> main(List<String> args) async {
   switch (kind) {
     case 'dump':
       Crashpad.dumpWithoutCrash();
+    case 'fastfail':
+      // Straight from kernel32 rather than through the package: this is the
+      // way a /GS failure or a Rust abort ends a process, and nothing of the
+      // package's may stand between it and WER.
+      DynamicLibrary.open('kernel32.dll').lookupFunction<
+        Void Function(Pointer<Void>, Pointer<Void>, Uint32),
+        void Function(Pointer<Void>, Pointer<Void>, int)
+      >('RaiseFailFastException')(nullptr, nullptr, 0);
     case 'wait':
       await Crashpad.sanitizationIdle;
       await Future<void>.delayed(const Duration(minutes: 5));

@@ -125,9 +125,10 @@ class CrashpadOptions {
   /// reported too (`true`). Fast-fail is how Rust's `std::process::abort`,
   /// a panic that cannot unwind, `/GS` failures and the C runtime's own
   /// `abort()` end a process, and it skips the unhandled exception filter
-  /// Crashpad otherwise relies on. Windows only consults the module if the
-  /// application's installer registered it — see the README. Ignored
-  /// elsewhere.
+  /// Crashpad otherwise relies on. Windows consults the module only if it is
+  /// also listed in the registry, which [Crashpad.start] does itself, under
+  /// the current user — no installer step, and nothing that needs elevation.
+  /// Ignored elsewhere.
   final bool registerWerModule;
 
   /// Extra handler arguments, passed through verbatim. Ignored on iOS.
