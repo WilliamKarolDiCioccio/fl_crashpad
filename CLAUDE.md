@@ -292,6 +292,21 @@ and BoringSSL is wired up only inside Chromium or Fuchsia
 - The fields call is in the desktop library too, which is why
   `test/uploader_test.dart` runs under `dart test` against real crashes.
 
+**An app may upload its own way** (`CrashReportDatabase.recordUpload`, added
+2026-09-30 for ripple_effect, which sends to object storage through its own
+client). It is a record, not a transport: the package still sends nothing an
+app did not hand it, and the files it hands over are the sanitised ones.
+- **Crashpad records an upload only of a pending report**
+  (`GetReportForUploading`), and a held report is completed. So
+  `recordOwnUpload` asks for it first (`RequestUpload`, which moves it back),
+  then records `SENT` — no new native entry point, and the ABI stays 2.
+- **A report already uploaded is refused**, as `reportNotFound`: Crashpad's
+  `RequestUpload` refuses one too, but as a database error, which reads as a
+  broken disk rather than a second call.
+- **The race is documented, not closed.** A desktop handler given a URL can
+  send a report between the app reading it and recording it. An app
+  uploading its own way gives it none, and the doc comment says so.
+
 **iOS: in process.** `StartCrashpadInProcessHandler(db, "", annotations)`.
 The empty URL means no upload thread. `fl_crashpad_process_pending_dumps`
 (`ProcessIntermediateDumps`, which blocks) runs first on the backlog isolate,

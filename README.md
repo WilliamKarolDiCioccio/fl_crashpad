@@ -183,6 +183,24 @@ most minidump collectors accept. What a particular backend wants beyond it — a
 release name, a token in the query string — is an annotation or part of the
 URL.
 
+### Sending them your own way
+
+A backend that is not a minidump collector — object storage behind its own
+client, say — does not need the protocol at all. Give `start` no `upload`,
+read the reports, send them however the backend wants, and tell the database:
+
+```dart
+final database = CrashReportDatabase(dir);
+for (final report in await database.reports()) {
+  if (report.uploaded || !userAgreed) continue;
+  final key = await myBackend.put(report.minidump, report.attachments);
+  await database.recordUpload(report.id, remoteId: key);
+}
+```
+
+Both the minidump and the attachments are the sanitised copies. A recorded
+report reads as `uploaded` with that `remoteId`, and nothing sends it again.
+
 Sanitising takes out what identifies the user; it cannot know what a stack
 happened to hold of their documents. Say that a crash report is sent in your
 privacy policy, and ask before sending.

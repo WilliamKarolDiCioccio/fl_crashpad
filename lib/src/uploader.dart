@@ -76,7 +76,7 @@ Future<void> uploadPending(
         (!settings.sanitize && settings.uploadsEnabled);
     try {
       if (!send) {
-        _record(database, id, uploadSkipped);
+        recordNativeUpload(database, id, uploadSkipped);
         continue;
       }
       final response = await _post(
@@ -85,7 +85,7 @@ Future<void> uploadPending(
         minidump: File(report['path']! as String),
         attachments: Directory('$database/attachments/$id'),
       );
-      _record(
+      recordNativeUpload(
         database,
         id,
         response == null ? uploadFailed : uploadSent,
@@ -95,6 +95,21 @@ Future<void> uploadPending(
       // The report stays pending, for the next start to try.
     }
   }
+}
+
+/// Records [id] as sent by the app itself, known remotely as [remoteId].
+///
+/// Crashpad records an upload only of a pending report, so one that was set
+/// aside — held back for consent, or given up on — is asked for first, which
+/// moves it back to pending. One already recorded as sent is refused rather
+/// than recorded twice.
+void recordOwnUpload(String database, String id, String remoteId) {
+  final report = listNativeReports(
+    database,
+  ).firstWhere((r) => r['id'] == id, orElse: () => throw CrashpadNotFound(id));
+  if (report['uploaded'] == true) throw CrashpadNotFound(id);
+  if (report['state'] != 'pending') requestNativeUpload(database, id);
+  recordNativeUpload(database, id, uploadSent, response: remoteId);
 }
 
 /// Sends one report, and returns the server's answer, or null for anything
@@ -201,19 +216,25 @@ Map<String, String> uploadFields(String minidumpPath) {
   return (jsonDecode(json) as Map<String, Object?>).cast<String, String>();
 }
 
-void _record(String database, String id, int outcome, {String? response}) =>
-    callNative((arena, error) {
-      return (
-        nativeDatabaseRecordUpload(
-          database.toNativeUtf8(allocator: arena),
-          id.toNativeUtf8(allocator: arena),
-          outcome,
-          response == null ? nullptr : response.toNativeUtf8(allocator: arena),
-          error,
-        ),
-        null,
-      );
-    });
+/// Records what came of an upload of a pending report, as Crashpad's upload
+/// thread would have.
+void recordNativeUpload(
+  String database,
+  String id,
+  int outcome, {
+  String? response,
+}) => callNative((arena, error) {
+  return (
+    nativeDatabaseRecordUpload(
+      database.toNativeUtf8(allocator: arena),
+      id.toNativeUtf8(allocator: arena),
+      outcome,
+      response == null ? nullptr : response.toNativeUtf8(allocator: arena),
+      error,
+    ),
+    null,
+  );
+});
 
 /// Crashpad's boundary shape (HTTPMultipartBuilder::GenerateBoundaryString).
 String _boundary() {
