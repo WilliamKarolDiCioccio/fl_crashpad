@@ -179,7 +179,20 @@ void main() {
       }
     });
 
-    final result = await runCrasher('fastfail');
+    // Probe, both ways: with the inherited error mode, then with WER's
+    // suppression bit cleared in the crasher.
+    final first = await runCrasher('fastfail');
+    await Future<void>.delayed(const Duration(seconds: 20));
+    final firstDumps = Directory(
+      temp.path,
+    ).listSync(recursive: true).where((f) => f.path.endsWith('.dmp')).length;
+    final result = await Process.run(
+      crasher.path,
+      [temp.path, handler.path, 'fastfail'],
+      environment: {'FL_CRASHPAD_CLEAR_NOGPFAULT': '1'},
+    );
+    print('PROBE as inherited: ${first.stderr} -> $firstDumps dumps');
+    print('PROBE cleared: ${result.stderr}');
     expect(result.exitCode, isNot(0), reason: '${result.stderr}');
     expect(await ours(), [
       endsWith(r'\crashpad_wer.dll'),

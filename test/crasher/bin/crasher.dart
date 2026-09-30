@@ -44,7 +44,23 @@ Future<void> main(List<String> args) async {
       // Straight from kernel32 rather than through the package: this is the
       // way a /GS failure or a Rust abort ends a process, and nothing of the
       // package's may stand between it and WER.
-      DynamicLibrary.open('kernel32.dll').lookupFunction<
+      final kernel32 = DynamicLibrary.open('kernel32.dll');
+      // Probe: the error mode, and SEM_NOGPFAULTERRORBOX (2) cleared, which
+      // tells Windows not to invoke WER at all and is inherited.
+      final getMode = kernel32
+          .lookupFunction<Uint32 Function(), int Function()>('GetErrorMode');
+      final setMode = kernel32
+          .lookupFunction<Uint32 Function(Uint32), int Function(int)>(
+            'SetErrorMode',
+          );
+      final mode = getMode();
+      stderr.writeln('error mode 0x${mode.toRadixString(16)}');
+      if (Platform.environment['FL_CRASHPAD_CLEAR_NOGPFAULT'] == '1') {
+        setMode(mode & ~2);
+        stderr.writeln('error mode now 0x${getMode().toRadixString(16)}');
+      }
+      await stderr.flush();
+      kernel32.lookupFunction<
         Void Function(Pointer<Void>, Pointer<Void>, Uint32),
         void Function(Pointer<Void>, Pointer<Void>, int)
       >('RaiseFailFastException')(nullptr, nullptr, 0);
