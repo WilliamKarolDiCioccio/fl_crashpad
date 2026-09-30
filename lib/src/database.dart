@@ -33,11 +33,13 @@ class CrashReport {
     required this.uploadAttempts,
     required this.uploadExplicitlyRequested,
     required this.minidump,
+    this.attachments = const [],
     this.sanitized = false,
   });
 
   factory CrashReport.fromJson(
     Map<String, Object?> json, {
+    List<File> attachments = const [],
     bool sanitized = false,
   }) => CrashReport(
     id: json['id']! as String,
@@ -54,6 +56,7 @@ class CrashReport {
     uploadAttempts: json['uploadAttempts']! as int,
     uploadExplicitlyRequested: json['uploadExplicitlyRequested']! as bool,
     minidump: File(json['path']! as String),
+    attachments: attachments,
     sanitized: sanitized,
   );
 
@@ -70,6 +73,10 @@ class CrashReport {
 
   /// The `.dmp` file itself — already sanitised, when [sanitized].
   final File minidump;
+
+  /// The files [CrashpadOptions.attachments] named, as they were at the
+  /// crash — already sanitised, when [sanitized]. Sorted by path.
+  final List<File> attachments;
 
   /// Whether the minidump and its attachments have been through the
   /// [ReportSanitizer]. Always true for a report [CrashReportDatabase.reports]
@@ -124,7 +131,11 @@ class CrashReportDatabase {
       return [
         for (final report in processed.reports)
           if (report.sanitized || !settings.sanitize)
-            CrashReport.fromJson(report.json, sanitized: report.sanitized),
+            CrashReport.fromJson(
+              report.json,
+              attachments: _attachments(path, report.json['id']! as String),
+              sanitized: report.sanitized,
+            ),
       ];
     });
   }
@@ -163,6 +174,33 @@ class CrashReportDatabase {
     }
   }
 
+  /// Records that the app sent [reportId] itself, and that where it went
+  /// knows it as [remoteId] — for an app that uploads reports its own way,
+  /// from [reports], rather than giving [Crashpad.start] a
+  /// [CrashpadOptions.upload]. The report then reads as [CrashReport.uploaded]
+  /// with that [CrashReport.remoteId], and nothing of this package sends it
+  /// again.
+  ///
+  /// Works whatever state the report is in, so a report held back for consent
+  /// can be sent and recorded without [requestUpload] first. Throws
+  /// [CrashpadErrorCode.reportNotFound] for a report that is not there or is
+  /// already recorded as uploaded.
+  ///
+  /// On desktop, a handler started *with* an upload URL may send a report
+  /// between the app reading it and this call; an app uploading its own way
+  /// gives it none.
+  Future<void> recordUpload(String reportId, {required String remoteId}) async {
+    final path = directory.path;
+    try {
+      await Isolate.run(() => recordOwnUpload(path, reportId, remoteId));
+    } on CrashpadNotFound {
+      throw CrashpadException(
+        CrashpadErrorCode.reportNotFound,
+        'no report $reportId that is not already uploaded',
+      );
+    }
+  }
+
   /// Deletes a report, its minidump and its attachments.
   void delete(String reportId) {
     callNative((arena, error) {
@@ -176,6 +214,13 @@ class CrashReportDatabase {
       );
     });
     forgetReport(directory.path, reportId);
+  }
+
+  static List<File> _attachments(String database, String id) {
+    final directory = Directory('$database/attachments/$id');
+    if (!directory.existsSync()) return const [];
+    return directory.listSync().whereType<File>().toList()
+      ..sort((a, b) => a.path.compareTo(b.path));
   }
 
   Pointer<Utf8> _path(Arena arena) =>

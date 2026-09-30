@@ -23,6 +23,11 @@ Android and iOS.
 - Android's versioned system libraries (`android.hardware.drm@1.4.so`) are no
   longer masked as email addresses; `ReportSanitizer.rulesVersion` is 2.
 - The native ABI is 2.
+- `CrashReportDatabase.recordUpload(id, remoteId:)` records a report the app
+  sent its own way, from any state, so a backend that is not a minidump
+  collector needs no `CrashpadOptions.upload`.
+- `CrashReport.attachments`: a report's attachments, sanitised like its
+  minidump (`[]` when there are none).
 
 ## 0.1.0
 

@@ -185,4 +185,47 @@ void main() {
     expect(kept['uploadAttempts'], 1);
     expect(kept['uploaded'], isFalse);
   }, timeout: const Timeout(Duration(minutes: 2)));
+  test('a report the app sent its own way is recorded once, with its '
+      'attachments handed over clean', () async {
+    final id = await crash();
+    // Where Crashpad files what CrashpadOptions.attachments named. The
+    // crasher attaches nothing, so one is put there the way the handler would.
+    File('${temp.path}/attachments/$id/app.log')
+      ..createSync(recursive: true)
+      ..writeAsStringSync('opened $home/story\n');
+    // Held back, as it is with consent off: set aside as the handler would,
+    // completed and never uploaded.
+    processReports(temp.path, ReportSanitizer.forHost(), decide: true);
+    await uploadPending(temp.path, upload());
+
+    final database = CrashReportDatabase(temp);
+    final report = await stored(id);
+    expect(report.state, CrashReportState.completed);
+    expect(report.attachments.map((f) => f.uri.pathSegments.last), ['app.log']);
+    expect(
+      leaks(report.attachments.single.readAsBytesSync()),
+      isFalse,
+      reason: 'handed over sanitised, like the minidump',
+    );
+
+    await database.recordUpload(id, remoteId: 'bucket/$id.dmp');
+    final recorded = await stored(id);
+    expect(recorded.uploaded, isTrue);
+    expect(recorded.remoteId, 'bucket/$id.dmp');
+    expect(recorded.state, CrashReportState.completed);
+
+    await expectLater(
+      database.recordUpload(id, remoteId: 'again'),
+      throwsA(
+        isA<CrashpadException>().having(
+          (e) => e.code,
+          'code',
+          CrashpadErrorCode.reportNotFound,
+        ),
+      ),
+      reason: 'recorded once',
+    );
+    await uploadPending(temp.path, upload());
+    expect(received, isEmpty, reason: 'nothing of ours sends it again');
+  }, timeout: const Timeout(Duration(minutes: 2)));
 }
