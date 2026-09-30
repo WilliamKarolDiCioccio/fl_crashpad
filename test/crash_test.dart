@@ -184,7 +184,31 @@ void main() {
     expect(await ours(), [
       endsWith(r'\crashpad_wer.dll'),
     ], reason: 'start listed the module under HKCU');
-    await expectSanitisedReport('fastfail');
+    try {
+      await expectSanitisedReport('fastfail');
+    } on TestFailure catch (failure) {
+      // WER is the one party here that says nothing when it declines, so a
+      // failure carries what decides whether it would have called the module.
+      final code = (result.exitCode & 0xffffffff).toRadixString(16);
+      final state = [
+        for (final args in [
+          [
+            'reg',
+            'query',
+            r'HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting',
+          ],
+          [
+            'reg',
+            'query',
+            r'HKCU\SOFTWARE\Microsoft\Windows\Windows Error Reporting',
+          ],
+          ['reg', 'query', key],
+          ['sc', 'query', 'WerSvc'],
+        ])
+          '> ${args.join(' ')}\n${(await Process.run(args.first, args.skip(1).toList())).stdout}',
+      ].join('\n');
+      fail('${failure.message}\nexit code 0x$code\n$state');
+    }
   }, skip: Platform.isWindows ? null : 'fast-fail and WER are Windows only');
 
   test('dumpWithoutCrash leaves a report and the process carries on', () async {
