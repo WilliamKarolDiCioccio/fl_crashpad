@@ -9,7 +9,9 @@ Android and iOS.
 
 - **Windows**: `Crashpad.start` lists `crashpad_wer.dll` in the registry under
   the current user, so fast-fail crashes — a `/GS` failure, a Rust abort —
-  are reported with no installer step (`registerWerModule`, `true`).
+  are reported with no installer step (`registerWerModule`, `true`). It also
+  lets WER see the process, which the Dart runtime's error mode had stopped,
+  asking WER for no crash dialog in its place.
 
 - **Android** 10 and later, arm64-v8a and x86_64: the handler is the library
   itself, started at a crash by the system linker through

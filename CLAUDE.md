@@ -238,6 +238,16 @@ change and no ABI bump), every start, before the handler launches:
   `uninsdeletevalue` to tidy up, and the README shows how.
 - **A refusal is swallowed.** A locked-down profile costs the fast-fail
   crashes, not `start`.
+- **The error mode is the other half, and it was found the hard way.** With
+  the value written, the Windows runners still produced no report. The
+  process's error mode was `0x8003`: the Dart runtime sets
+  `SEM_NOGPFAULTERRORBOX`, which means Windows *does not invoke WER at all*,
+  and a child inherits it. With it cleared in the crasher, the report
+  appeared. So `start` clears it too (`letWerSeeFastFails`). What the bit was
+  there for was no crash dialog, so when it was set, `start` also calls
+  `WerSetFlags(WER_FAULT_REPORTING_NO_UI)`, and nobody sees a difference.
+  A crash Crashpad's filter catches never reaches WER, so this changes
+  nothing for them.
 - **Proved by `crash_test.dart`** on the Windows runners: the crasher's
   `fastfail` kind calls `RaiseFailFastException` from kernel32 directly, and
   the test expects the HKCU value and a sanitised report. Everywhere else

@@ -313,8 +313,11 @@ Flutter build finds it.
   of `0` named after the DLL's full path, under
   `HKEY_CURRENT_USER\Software\Microsoft\Windows\Windows Error Reporting\RuntimeExceptionHelperModules`.
   **`start` writes that value itself**, under the current user and with no
-  elevation, so there is nothing to add to an installer. `registerWerModule:
-  false` turns it off. The value is not removed when the app is: one naming a
+  elevation, so there is nothing to add to an installer. It also clears
+  `SEM_NOGPFAULTERRORBOX` from the process's error mode — with it set,
+  Windows does not invoke WER at all, and the Dart runtime sets it — and asks
+  WER for no UI instead, so no crash dialog appears where none did.
+  `registerWerModule: false` turns both off. The value is not removed when the app is: one naming a
   DLL that is gone does nothing, and an installer that wants to tidy it up can
   add it too, with Inno Setup's `uninsdeletevalue`:
 

@@ -128,7 +128,9 @@ class CrashpadOptions {
   /// Crashpad otherwise relies on. Windows consults the module only if it is
   /// also listed in the registry, which [Crashpad.start] does itself, under
   /// the current user — no installer step, and nothing that needs elevation.
-  /// Ignored elsewhere.
+  /// It also clears `SEM_NOGPFAULTERRORBOX` from the error mode, without which
+  /// Windows never invokes WER, and asks WER for no UI in its place. Ignored
+  /// elsewhere.
   final bool registerWerModule;
 
   /// Extra handler arguments, passed through verbatim. Ignored on iOS.

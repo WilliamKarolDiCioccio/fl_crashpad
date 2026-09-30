@@ -17,6 +17,16 @@
 // HKCU for the same value. It is written every start rather than checked
 // first: one small idempotent write, and never stale.
 //
+// **And the process has to let WER in at all.** An error mode with
+// SEM_NOGPFAULTERRORBOX means Windows does not invoke WER for the process —
+// Microsoft's own wording — and the Dart runtime sets it (0x8003 in a Dart
+// executable, measured on the Windows runners), and a child inherits it. With
+// it set, the registry value and the registration are both ignored: no
+// fast-fail was ever reported until [letWerSeeFastFails] cleared it. What the
+// bit was *for* is no crash dialog, so when it was set, WER is told the same
+// thing its own way (WerSetFlags(WER_FAULT_REPORTING_NO_UI)) and nothing a
+// user sees changes.
+//
 // **What it cannot do** is remove the value when the app is uninstalled. A
 // value naming a DLL that is gone is inert — WER fails to load it and moves
 // on — and an installer that wants to tidy it can still add it with
@@ -130,6 +140,42 @@ bool registerWerModuleInRegistry(String modulePath) {
         close(key.value);
       }
     });
+  } on Object {
+    return false;
+  }
+}
+
+typedef _ErrorModeGetNative = Uint32 Function();
+typedef _ErrorModeGet = int Function();
+typedef _ErrorModeSetNative = Uint32 Function(Uint32 mode);
+typedef _ErrorModeSet = int Function(int mode);
+typedef _WerSetFlagsNative = Int32 Function(Uint32 flags);
+typedef _WerSetFlags = int Function(int flags);
+
+const int _semNoGpFaultErrorBox = 0x0002;
+const int _werFaultReportingNoUi = 0x0020;
+
+/// Clears SEM_NOGPFAULTERRORBOX from this process's error mode, so that WER
+/// is invoked for a fast-fail and can hand it to `crashpad_wer.dll`. When the
+/// bit was set, asks WER for no UI instead, which is what the bit was there
+/// for. Windows only; a no-op elsewhere. Returns whether the mode changed.
+/// Never throws.
+bool letWerSeeFastFails() {
+  if (!Platform.isWindows) return false;
+  try {
+    final kernel32 = DynamicLibrary.open('kernel32.dll');
+    final getMode = kernel32.lookupFunction<_ErrorModeGetNative, _ErrorModeGet>(
+      'GetErrorMode',
+    );
+    final mode = getMode();
+    if (mode & _semNoGpFaultErrorBox == 0) return false;
+    kernel32.lookupFunction<_ErrorModeSetNative, _ErrorModeSet>('SetErrorMode')(
+      mode & ~_semNoGpFaultErrorBox,
+    );
+    kernel32.lookupFunction<_WerSetFlagsNative, _WerSetFlags>('WerSetFlags')(
+      _werFaultReportingNoUi,
+    );
+    return true;
   } on Object {
     return false;
   }

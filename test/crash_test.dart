@@ -39,7 +39,20 @@ void main() {
       '${build.path}/bundle/bin/crasher${Platform.isWindows ? '.exe' : ''}',
     );
   });
-  tearDownAll(() => build.deleteSync(recursive: true));
+  // Retried, then given up on: after the fast-fail test WER can hold the
+  // crashpad_wer.dll beside the crasher loaded for a while, and a temp folder
+  // left behind on a runner is not a failure of anything under test.
+  tearDownAll(() async {
+    final deadline = DateTime.now().add(const Duration(seconds: 30));
+    while (build.existsSync()) {
+      try {
+        build.deleteSync(recursive: true);
+      } on FileSystemException {
+        if (DateTime.now().isAfter(deadline)) return;
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+      }
+    }
+  });
 
   setUp(() => temp = Directory.systemTemp.createTempSync('fl_crashpad_'));
   // Windows refuses to delete a directory a process still has a file open in,
@@ -179,20 +192,7 @@ void main() {
       }
     });
 
-    // Probe, both ways: with the inherited error mode, then with WER's
-    // suppression bit cleared in the crasher.
-    final first = await runCrasher('fastfail');
-    await Future<void>.delayed(const Duration(seconds: 20));
-    final firstDumps = Directory(
-      temp.path,
-    ).listSync(recursive: true).where((f) => f.path.endsWith('.dmp')).length;
-    final result = await Process.run(
-      crasher.path,
-      [temp.path, handler.path, 'fastfail'],
-      environment: {'FL_CRASHPAD_CLEAR_NOGPFAULT': '1'},
-    );
-    print('PROBE as inherited: ${first.stderr} -> $firstDumps dumps');
-    print('PROBE cleared: ${result.stderr}');
+    final result = await runCrasher('fastfail');
     expect(result.exitCode, isNot(0), reason: '${result.stderr}');
     expect(await ours(), [
       endsWith(r'\crashpad_wer.dll'),

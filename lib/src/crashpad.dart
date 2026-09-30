@@ -107,7 +107,10 @@ abstract final class Crashpad {
     // Before the handler starts, so a fast-fail from the first moment is
     // covered: WER reads the list when the crash happens, and the shim's
     // registration only names the module. See wer_registration.dart.
-    if (werModulePath != null) registerWerModuleInRegistry(werModulePath);
+    if (werModulePath != null) {
+      registerWerModuleInRegistry(werModulePath);
+      letWerSeeFastFails();
+    }
     final upload = options.upload;
     final database = options.databaseDirectory.path;
 
