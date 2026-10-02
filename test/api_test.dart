@@ -17,7 +17,7 @@ void main() {
   tearDown(() => temp.deleteSync(recursive: true));
 
   test('the library is present, speaks this ABI and names its revision', () {
-    expect(Crashpad.isSupported, isTrue);
+    expect(Crashpad.isAvailable, isTrue);
     expect(Crashpad.isStarted, isFalse);
     expect(Crashpad.crashpadRevision, matches(RegExp(r'^[0-9a-f]{40}$')));
   });
@@ -140,9 +140,19 @@ void main() {
   group('database', () {
     test('consent is off until turned on, and stays as it was set', () {
       final database = CrashReportDatabase(temp);
-      expect(database.uploadsEnabled, isFalse);
-      database.uploadsEnabled = true;
-      expect(CrashReportDatabase(temp).uploadsEnabled, isTrue);
+      expect(database.uploadConsent, isFalse);
+      database.uploadConsent = true;
+      expect(CrashReportDatabase(temp).uploadConsent, isTrue);
+    });
+
+    test('consent given under 0.1 is still consent', () {
+      // The name changed and the stored key did not: renaming the key would
+      // quietly withdraw every yes a user had already given.
+      Directory('${temp.path}/fl_crashpad').createSync(recursive: true);
+      File('${temp.path}/fl_crashpad/settings.json').writeAsStringSync(
+        '{"version": 1, "uploadsEnabled": true, "sanitize": true}',
+      );
+      expect(CrashReportDatabase(temp).uploadConsent, isTrue);
     });
 
     test('a report that is not there, or an id that is not one', () async {

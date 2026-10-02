@@ -295,7 +295,7 @@ frameworks, which is fine for a dylib.
 - **API 29 is checked at `start`** (`FL_CRASHPAD_UNSUPPORTED`); the library
   is built for **API 26**, the lowest Crashpad compiles for
   (`__system_property_read_callback`). Below 26 it does not load, which
-  `isSupported` reports as false.
+  `isAvailable` reports as false.
 
 **Android's handler cannot upload over https.** Its transport is `socket`,
 and BoringSSL is wired up only inside Chromium or Fuchsia
@@ -421,7 +421,7 @@ carries the full argument):
 - The upload test runs a local HTTP server. With consent on, a crash sends
   nothing from the dying process. The next start sends it, and what the server
   receives holds neither.
-- With `sanitize: false` in the crasher, all five go red, the upload test with
+- With `disableSanitization: true` in the crasher, all five go red, the upload test with
   "sent from the crashed process".
 
 **Measured**: a 16.8 MB dump (a thread stack overflow) takes 200–500 ms and
@@ -488,7 +488,7 @@ start equal (0.1.0) and need not stay so.
   keeps pointing at its old archives, which is what lets both coexist in the
   cache.
 - `FL_CRASHPAD_ABI_VERSION` in `fl_crashpad.h` guards the pairing at run
-  time: a library speaking another ABI makes `isSupported` false and `start`
+  time: a library speaking another ABI makes `isAvailable` false and `start`
   throw, rather than being misread. Bump it (and `abiVersion` in
   `lib/src/ffi/bindings.dart`) with any change to the header; a native
   release that leaves the header alone keeps it.

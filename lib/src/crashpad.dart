@@ -42,16 +42,29 @@ abstract final class Crashpad {
   static final CrashpadAnnotations _annotations =
       CrashpadAnnotations.internal();
 
-  /// Whether the native library is present and speaks this package's ABI.
+  /// Whether this build carries the native library, in the version this
+  /// Dart code speaks. Nothing else: **true is not a promise that [start]
+  /// will succeed.**
   ///
   /// False on platforms without a build — anything but Linux, macOS,
   /// Windows, 64-bit Android from 8.0 (API 26) and iOS — and in a build that
-  /// opted out with the `disable` user-define. Android 8 and 9 load the
-  /// library but cannot [start]: the handler needs Android 10.
-  static bool get isSupported => _libraryAbi() == abiVersion;
+  /// opted out with the `disable` user-define. Where it is true, [start] can
+  /// still refuse, with a [CrashpadException] whose [CrashpadException.code]
+  /// says why:
+  ///
+  /// - [CrashpadErrorCode.unsupportedPlatform] on Android 8 and 9, which load
+  ///   the library but cannot run the handler: it needs Android 10;
+  /// - [CrashpadErrorCode.sandboxed] inside the macOS App Sandbox;
+  /// - the handler codes, when the handler is missing or not the one built
+  ///   with this library.
+  ///
+  /// So check this to skip crash reporting where there is none, and catch
+  /// from [start] for the rest. It was `isSupported` until 1.0, which read as
+  /// the answer to the second question as well.
+  static bool get isAvailable => _libraryAbi() == abiVersion;
 
   /// Whether [start] has succeeded in this process.
-  static bool get isStarted => isSupported && nativeIsStarted();
+  static bool get isStarted => isAvailable && nativeIsStarted();
 
   /// The Crashpad revision the native library was built from.
   static String get crashpadRevision {
@@ -111,7 +124,7 @@ abstract final class Crashpad {
       registerWerModuleInRegistry(werModulePath);
       letWerSeeFastFails();
     }
-    final upload = options.upload;
+    final upload = options.uploadEndpoint;
     final database = options.databaseDirectory.path;
 
     // Consent and the mode are the package's, kept beside Crashpad's
@@ -119,9 +132,9 @@ abstract final class Crashpad {
     // off while reports are sanitised.
     Directory(database).createSync(recursive: true);
     final settings = StoreSettings(
-      uploadsEnabled:
-          options.uploadsEnabled ?? StoreSettings.read(database).uploadsEnabled,
-      sanitize: options.sanitize,
+      uploadConsent:
+          options.uploadConsent ?? StoreSettings.read(database).uploadConsent,
+      sanitize: !options.disableSanitization,
     )..write(database);
     final sanitizer = options.sanitizer ?? ReportSanitizer.forHost();
 
@@ -167,7 +180,7 @@ abstract final class Crashpad {
         return array;
       }
 
-      final annotations = options.annotations.entries.toList();
+      final annotations = options.fixedAnnotations.entries.toList();
       final pairs = annotations.isEmpty
           ? nullptr
           : arena<NativePair>(annotations.length);
@@ -236,8 +249,13 @@ abstract final class Crashpad {
     nativeDumpWithoutCrash();
   }
 
-  /// Crashes the process, to check that a setup produces reports. Never
-  /// returns.
+  /// **Terminates the process**, on purpose, to prove a setup produces
+  /// reports. Never returns: nothing after it runs, nothing is flushed, and
+  /// the app is gone — so call it from an integration test or a hidden
+  /// developer menu, never from a path a user can reach by accident.
+  ///
+  /// [dumpWithoutCrash] writes a report and carries on, for when the process
+  /// should survive the check.
   static Never crashForTesting([
     CrashpadTestCrash kind = CrashpadTestCrash.segfault,
   ]) {

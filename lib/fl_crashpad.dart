@@ -5,7 +5,7 @@
 /// ```dart
 /// Crashpad.start(CrashpadOptions(
 ///   databaseDirectory: Directory('${support.path}/crashpad'),
-///   annotations: {'version': '1.2.0'},
+///   fixedAnnotations: {'version': '1.2.0'},
 /// ));
 /// ```
 ///
@@ -20,5 +20,5 @@ export 'src/database.dart'
     show CrashReport, CrashReportDatabase, CrashReportState;
 export 'src/exception.dart' show CrashpadErrorCode, CrashpadException;
 export 'src/handler_location.dart' show CrashpadHandler;
-export 'src/options.dart' show CrashpadOptions, CrashpadUpload;
-export 'src/sanitizer.dart' show ReportSanitizer, sanitizeReportFiles;
+export 'src/options.dart' show CrashpadOptions, CrashpadUploadEndpoint;
+export 'src/sanitizer.dart' show ReportSanitizer;

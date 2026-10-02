@@ -32,7 +32,7 @@ import 'package:crypto/crypto.dart';
 /// fails GN's unused-assignment check for `target_cpu="arm"`, and fixing that
 /// means patching upstream, which this package never does. An app still
 /// builds for armeabi-v7a; there it has no library, and
-/// `Crashpad.isSupported` says so.
+/// `Crashpad.isAvailable` says so.
 ///
 /// The mobile targets carry no handler executable. Android runs the handler
 /// out of the library itself, through the system linker and a trampoline

@@ -39,7 +39,7 @@ bool get uploadsFromDart => Platform.isAndroid || Platform.isIOS;
 /// What the running process's [Crashpad.start] was told about uploads, so
 /// that [CrashReportDatabase.requestUpload] can send a report at once
 /// rather than on the next launch. Per isolate; null before start.
-CrashpadUpload? activeUpload;
+CrashpadUploadEndpoint? activeUpload;
 
 /// Crashpad's own timeout for one upload (kUploadReportTimeoutSeconds).
 const Duration _timeout = Duration(seconds: 60);
@@ -55,7 +55,7 @@ const Duration _timeout = Duration(seconds: 60);
 /// later call.
 Future<void> uploadPending(
   String database,
-  CrashpadUpload upload, {
+  CrashpadUploadEndpoint upload, {
   String? only,
 }) async {
   final settings = StoreSettings.read(database);
@@ -73,7 +73,7 @@ Future<void> uploadPending(
 
     final send =
         report['uploadExplicitlyRequested'] == true ||
-        (!settings.sanitize && settings.uploadsEnabled);
+        (!settings.sanitize && settings.uploadConsent);
     try {
       if (!send) {
         recordNativeUpload(database, id, uploadSkipped);
@@ -115,7 +115,7 @@ void recordOwnUpload(String database, String id, String remoteId) {
 /// Sends one report, and returns the server's answer, or null for anything
 /// Crashpad would have counted a failure.
 Future<String?> _post(
-  CrashpadUpload upload, {
+  CrashpadUploadEndpoint upload, {
   required String id,
   required File minidump,
   required Directory attachments,

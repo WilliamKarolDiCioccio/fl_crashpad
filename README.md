@@ -11,29 +11,6 @@ FFI is not: the process is gone before any Dart code runs again. fl_crashpad
 installs Crashpad in your app, and when the process dies it writes a minidump — the threads, their stacks, the loaded modules, your annotations —
 to a folder you choose, and, if you say so, uploads it to any minidump server.
 
-- **Linux, Windows and macOS**, x64 and arm64; **Android** 10 and later,
-  64-bit; and **iOS**.
-- **Everything native in the process is covered**, whichever language it is
-  in. A Rust engine behind flutter_rust_bridge, a C++ plugin, the Flutter
-  engine itself: a crash in any of them is a crash of the process, and
-  Crashpad catches it. (Errors your code returns and handles are still yours
-  to report the way you already do.)
-- **Reports are sanitised before anybody reads or sends them.** The home
-  directory, the account name, email addresses, credentials, secret-looking
-  environment variables and private paths are masked inside the minidump
-  itself, byte for byte, before the report can be read, previewed or
-  uploaded.
-- **Annotations** fixed at start and **annotations that change** while the app
-  runs, **attachments** read at the moment of the crash, **consent** kept in
-  the database, and **any backend**: Sentry, Backtrace, BugSplat, Socorro, or a
-  folder nobody uploads.
-- **No logger, no backend, no service assumed.** The package logs nothing and
-  depends on no reporting SDK; it throws a `CrashpadException` when something
-  is wrong and otherwise stays out of the way.
-- **Nothing to add to your runners.** The package ships its native half
-  through Flutter's own build: a build hook for the library, and on desktop
-  small package-owned platform files for the handler executable.
-
 ## Install
 
 ```sh
@@ -62,7 +39,7 @@ Future<void> main() async {
 
   Crashpad.start(CrashpadOptions(
     databaseDirectory: Directory('${support.path}/crashpad'),
-    annotations: {'version': '1.4.0', 'channel': 'stable'},
+    fixedAnnotations: {'version': '1.4.0', 'channel': 'stable'},
     attachments: [File('${support.path}/logs/latest.log')],
   ));
 
@@ -81,6 +58,38 @@ is wrong, rather than silently at the first crash.
 Crashpad can be started once per process, and there is no `stop`: its
 handlers are process-wide and cannot be uninstalled.
 
+`Crashpad.isAvailable` is false where this build has no native half; check it
+to skip crash reporting there. Everywhere else, catch from `start`: a
+`CrashpadException` carries a `CrashpadErrorCode` to branch on —
+`unsupportedPlatform` on Android 8 and 9, `sandboxed` in the macOS App
+Sandbox, `handlerMissing` for a broken install — never a message to parse.
+
+## What you get
+
+- **Linux, Windows and macOS**, x64 and arm64; **Android** 10 and later,
+  64-bit; and **iOS**.
+- **Everything native in the process is covered**, whichever language it is
+  in. A Rust engine behind flutter_rust_bridge, a C++ plugin, the Flutter
+  engine itself: a crash in any of them is a crash of the process, and
+  Crashpad catches it. (Errors your code returns and handles are still yours
+  to report the way you already do.)
+- **Reports are sanitised before anybody reads or sends them.** The home
+  directory, the account name, email addresses, credentials, secret-looking
+  environment variables and private paths are masked inside the minidump
+  itself, byte for byte, before the report can be read, previewed or
+  uploaded — and [what it cannot catch](#sanitising-reports) is said as
+  plainly.
+- **Annotations** fixed at start and **annotations that change** while the app
+  runs, **attachments** read at the moment of the crash, the user's **consent**
+  kept in the database, and **any backend**: Sentry, Backtrace, BugSplat, Socorro, or a
+  folder nobody uploads.
+- **No logger, no backend, no service assumed.** The package logs nothing and
+  depends on no reporting SDK; it throws a `CrashpadException` when something
+  is wrong and otherwise stays out of the way.
+- **Nothing to add to your runners.** The package ships its native half
+  through Flutter's own build: a build hook for the library, and on desktop
+  small package-owned platform files for the handler executable.
+
 ## Annotations that change
 
 ```dart
@@ -93,7 +102,7 @@ These are read at the moment of the crash, from memory Crashpad can read
 without allocating — which is why they are small: up to 64 entries, keys and
 values up to 255 bytes of UTF-8. Larger than that, write it to a file and pass
 it as an attachment. Fixed for the life of the process, pass it in
-`CrashpadOptions.annotations`, which Crashpad does not size-limit: those
+`CrashpadOptions.fixedAnnotations`, which Crashpad does not size-limit: those
 travel on the handler's command line.
 
 ## Sanitising reports
@@ -102,6 +111,16 @@ A minidump is a snapshot of the process: thread stacks and whatever was on
 them, every loaded module's path, and — on Linux and macOS — the environment
 and the command line. Out of the box, every report is **sanitised before it
 can be read or sent**:
+
+> **What it can promise, and what it cannot.** Sanitising removes what is
+> recognisably about the user — paths, names, addresses, credentials, the
+> secrets and folders you name — before a report can be read or sent. It
+> cannot know whether something of theirs that is not shaped like any of
+> those, a line of a document, a value in a buffer, happened to be on a
+> native stack at the moment of the crash. Say in your privacy policy that
+> crash reports are sent, and ask before sending them.
+> [`SECURITY.md`](SECURITY.md) has the rest of what the package promises,
+> and how to report a hole in it.
 
 | | becomes |
 | --- | --- |
@@ -146,23 +165,24 @@ Crashpad.start(CrashpadOptions(
 ));
 ```
 
-`sanitize: false` turns it off, and Crashpad goes back to sending each report
-from the crashed process, exactly as it was written.
+Turning it off is one deliberate line — `disableSanitization: true` — and
+Crashpad goes back to sending each report from the crashed process, exactly as
+it was written: environment, home directory, whatever was on the stack.
 
 ## Uploads and consent
 
 Nothing leaves the machine unless two things are true: the app gave Crashpad a
-URL, and uploads are enabled.
+URL, and the user said yes.
 
 ```dart
 Crashpad.start(CrashpadOptions(
   databaseDirectory: dir,
-  upload: CrashpadUpload(url: Uri.parse('https://example.com/minidump')),
-  uploadsEnabled: userAgreed, // null keeps the last answer
+  uploadEndpoint: CrashpadUploadEndpoint(url: Uri.parse('https://example.com/minidump')),
+  uploadConsent: userAgreed, // null keeps the last answer
 ));
 
 // Later, from the settings page:
-CrashReportDatabase(dir).uploadsEnabled = false;
+CrashReportDatabase(dir).uploadConsent = false;
 ```
 
 Consent lives in the database, not in the app's memory, so it survives
@@ -186,7 +206,7 @@ URL.
 ### Sending them your own way
 
 A backend that is not a minidump collector — object storage behind its own
-client, say — does not need the protocol at all. Give `start` no `upload`,
+client, say — does not need the protocol at all. Give `start` no `uploadEndpoint`,
 read the reports, send them however the backend wants, and tell the database:
 
 ```dart
@@ -201,11 +221,7 @@ for (final report in await database.reports()) {
 Both the minidump and the attachments are the sanitised copies. A recorded
 report reads as `uploaded` with that `remoteId`, and nothing sends it again.
 
-Sanitising takes out what identifies the user; it cannot know what a stack
-happened to hold of their documents. Say that a crash report is sent in your
-privacy policy, and ask before sending.
-
-## Reading reports
+## Reading reports, and sending one
 
 ```dart
 final database = CrashReportDatabase(dir);
@@ -228,74 +244,6 @@ Crashpad.crashForTesting(CrashpadTestCrash.segfault); // a report, and gone
 ```
 
 The example app has a button for each.
-
-## How it gets into your app
-
-On desktop the handler is a separate executable, and a Flutter build hook can
-ship libraries but not executables. So the library travels through the hook,
-and the handler through a few lines of platform build files inside this
-package — nothing in your app's runners:
-
-| | The library (hook) | `crashpad_handler` (package platform files) |
-| --- | --- | --- |
-| Linux | `bundle/lib/libfl_crashpad_native.so` | `bundle/lib/crashpad_handler`, mode 755 |
-| Windows | beside the `.exe` | `crashpad_handler.exe` and `crashpad_wer.dll` beside the `.exe` |
-| macOS | `Contents/Frameworks/fl_crashpad_native.framework` | `Contents/Frameworks/fl_crashpad.framework/Versions/A/Helpers/crashpad_handler` |
-
-`CrashpadHandler.defaultPath()` knows those places. For a custom layout, pass
-`CrashpadOptions.handler`.
-
-On Android and iOS there is no executable, and everything travels through the
-hook. Android's handler is the library itself: at a crash, the system linker
-starts `libcrashpad_handler_trampoline.so`, packaged beside it in the APK,
-which loads the library again as the handler. iOS handles crashes inside the
-process.
-
-Both halves come from the same place, in this order:
-
-1. a directory you name — the `artifacts_dir` hook user-define, and the
-   `FL_CRASHPAD_ARTIFACTS_DIR` environment variable for the platform files:
-
-   ```yaml
-   # your app's pubspec.yaml
-   hooks:
-     user_defines:
-       fl_crashpad:
-         artifacts_dir: /path/to/linux-x64
-   ```
-
-2. the per-user cache of the machine building the app — `~/.cache/fl_crashpad`,
-   `~/Library/Caches/fl_crashpad`, `%USERPROFILE%\AppData\Local\fl_crashpad`
-   — which holds the Android and iOS builds too;
-3. a download from this package's GitHub releases, refused unless it matches
-   the digest in `native/artifacts.lock.json`.
-
-To fill the cache ahead of time — for CI, or before going offline:
-
-```sh
-dart run fl_crashpad:prefetch
-```
-
-To opt out of the native half altogether, on a build where you do not want
-it, set `disable: true` under the same user-define; `Crashpad.isSupported`
-then reports `false`.
-
-### Building it yourself
-
-Everything that is downloaded can be built from source, with the same script
-the releases are built with:
-
-```sh
-dart run tool/build_native.dart --install   # from a checkout of this package
-dart run tool/build_native.dart --target android-arm64 --install
-```
-
-It fetches Crashpad at the pinned revision with git, and GN and ninja from
-Chromium's package server, and needs Python 3 and the platform's compiler —
-clang 17 or newer on Linux (with libcurl's and zlib's headers), Xcode on
-macOS and iOS, Visual Studio on Windows, and the Android NDK for Android
-(from any of the three). `--install` puts the result in the cache, where the next
-Flutter build finds it.
 
 ## Platform notes
 
@@ -380,7 +328,7 @@ Flutter build finds it.
 - **Android 10 (API 29) or later.** The handler is started by the system
   linker out of the APK, which older versions cannot do; on 8 and 9 `start`
   throws `CrashpadException(unsupportedPlatform)`, and below 8 the library
-  does not load, which `Crashpad.isSupported` reports.
+  does not load, which `Crashpad.isAvailable` reports.
 - **64-bit only**: arm64-v8a and x86_64. An app built for armeabi-v7a still
   builds and runs there without Crashpad.
 - Nothing runs until a crash: the handler process exists only while it
@@ -408,6 +356,74 @@ Crashpad cannot share a process with another native crash reporter — Breakpad,
 sentry-native with its Crashpad backend. They
 compete for the same signal handlers and exception ports, and the last one
 installed wins. Use one.
+
+## How it gets into your app
+
+On desktop the handler is a separate executable, and a Flutter build hook can
+ship libraries but not executables. So the library travels through the hook,
+and the handler through a few lines of platform build files inside this
+package — nothing in your app's runners:
+
+| | The library (hook) | `crashpad_handler` (package platform files) |
+| --- | --- | --- |
+| Linux | `bundle/lib/libfl_crashpad_native.so` | `bundle/lib/crashpad_handler`, mode 755 |
+| Windows | beside the `.exe` | `crashpad_handler.exe` and `crashpad_wer.dll` beside the `.exe` |
+| macOS | `Contents/Frameworks/fl_crashpad_native.framework` | `Contents/Frameworks/fl_crashpad.framework/Versions/A/Helpers/crashpad_handler` |
+
+`CrashpadHandler.defaultPath()` knows those places. For a custom layout, pass
+`CrashpadOptions.handler`.
+
+On Android and iOS there is no executable, and everything travels through the
+hook. Android's handler is the library itself: at a crash, the system linker
+starts `libcrashpad_handler_trampoline.so`, packaged beside it in the APK,
+which loads the library again as the handler. iOS handles crashes inside the
+process.
+
+Both halves come from the same place, in this order:
+
+1. a directory you name — the `artifacts_dir` hook user-define, and the
+   `FL_CRASHPAD_ARTIFACTS_DIR` environment variable for the platform files:
+
+   ```yaml
+   # your app's pubspec.yaml
+   hooks:
+     user_defines:
+       fl_crashpad:
+         artifacts_dir: /path/to/linux-x64
+   ```
+
+2. the per-user cache of the machine building the app — `~/.cache/fl_crashpad`,
+   `~/Library/Caches/fl_crashpad`, `%USERPROFILE%\AppData\Local\fl_crashpad`
+   — which holds the Android and iOS builds too;
+3. a download from this package's GitHub releases, refused unless it matches
+   the digest in `native/artifacts.lock.json`.
+
+To fill the cache ahead of time — for CI, or before going offline:
+
+```sh
+dart run fl_crashpad:prefetch
+```
+
+To opt out of the native half altogether, on a build where you do not want
+it, set `disable: true` under the same user-define; `Crashpad.isAvailable`
+then reports `false`.
+
+### Building it yourself
+
+Everything that is downloaded can be built from source, with the same script
+the releases are built with:
+
+```sh
+dart run tool/build_native.dart --install   # from a checkout of this package
+dart run tool/build_native.dart --target android-arm64 --install
+```
+
+It fetches Crashpad at the pinned revision with git, and GN and ninja from
+Chromium's package server, and needs Python 3 and the platform's compiler —
+clang 17 or newer on Linux (with libcurl's and zlib's headers), Xcode on
+macOS and iOS, Visual Studio on Windows, and the Android NDK for Android
+(from any of the three). `--install` puts the result in the cache, where the next
+Flutter build finds it.
 
 ## Example
 

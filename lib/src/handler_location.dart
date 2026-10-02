@@ -1,6 +1,13 @@
 import 'dart:io';
 
+import 'options.dart';
+
 /// Where this package's build puts `crashpad_handler` inside an app bundle.
+///
+/// **Advanced: for custom packaging only.** An app built the ordinary way
+/// never needs this — [CrashpadOptions.handler] defaults to [defaultPath].
+/// It is public for a bundle laid out by hand, an installer that moves the
+/// handler, or a test run outside a bundle.
 ///
 /// The build places it with each platform's own mechanism, never with the
 /// Dart build hook, because a hook can ship libraries but not executables:

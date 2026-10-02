@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:fl_crashpad/fl_crashpad.dart';
+import 'package:fl_crashpad/src/sanitizer.dart' show sanitizeReportFiles;
 import 'package:test/test.dart';
 
 void main() {
