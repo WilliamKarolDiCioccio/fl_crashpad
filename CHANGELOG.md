@@ -3,9 +3,62 @@
 What an app can do with each version, newest first. The reasoning behind a
 change lives beside the code in `CLAUDE.md`; this file only says what changed.
 
-## Unreleased
+## 1.0.0
 
-Android and iOS.
+The API is stable from here. The native half is unchanged — the same
+`native-v0.1.0` archives, the same digests — and so is everything on disk: a
+user's consent given under 0.1 is still their consent.
+
+The changes are to what the API says to whoever reads a call to it. Consent
+reads as consent, the one switch that sends a user's data out as it was
+written reads as the decision it is, and a name that answered two questions
+now answers the one it can.
+
+### Renamed
+
+| 0.1.0 | 1.0.0 |
+| --- | --- |
+| `CrashpadOptions(uploadsEnabled: …)` | `CrashpadOptions(uploadConsent: …)` |
+| `database.uploadsEnabled` | `database.uploadConsent` |
+| `CrashpadOptions(sanitize: false)` | `CrashpadOptions(disableSanitization: true)` |
+| `CrashpadOptions(upload: CrashpadUpload(url: …))` | `CrashpadOptions(uploadEndpoint: CrashpadUploadEndpoint(url: …))` |
+| `CrashpadOptions(annotations: …)` | `CrashpadOptions(fixedAnnotations: …)` |
+| `Crashpad.isSupported` | `Crashpad.isAvailable` |
+
+- **`uploadConsent`** (`null`: keep the last answer, which is `false` until
+  somebody says otherwise). It is the user's answer, not a switch on the
+  uploader, and its doc says to pass what they answered rather than `true`
+  because an endpoint exists. The settings file keeps its `uploadsEnabled`
+  key, so no consent already given is withdrawn. *consent given under 0.1 is
+  still consent* in `test/api_test.dart`.
+- **`disableSanitization`** (`false`). Sanitising is the default you never
+  write; the other path is one deliberate, conspicuous line.
+- **`CrashpadUploadEndpoint`** under **`uploadEndpoint`**: it is where reports
+  go, not an upload.
+- **`fixedAnnotations`**: they never join the runtime `Crashpad.annotations`
+  and nothing changes them after `start`.
+- **`isAvailable`**: whether this build carries the native library in the
+  version this code speaks. `isSupported` answered `true` on Android 8 and 9,
+  where `start` then refuses; the doc now lists what `start` can still refuse
+  with, as a `CrashpadErrorCode` to branch on.
+
+### Removed from the barrel
+
+- `sanitizeReportFiles`: what the database calls on each report, documented
+  for nobody else. `ReportSanitizer` is the API.
+
+### Documentation
+
+- `crashForTesting` says first that it terminates the process;
+  `CrashpadHandler` says it is for custom packaging.
+- The README follows the order an app is set up in — install, start, what you
+  get, sanitising, consent and uploads, reading reports, trying it out, then
+  the platforms and how the native half gets built — and says what
+  sanitising cannot catch beside the promise it makes, not after it.
+- `SECURITY.md`: what the package promises, what it cannot, what you are
+  running and how it is verified, and how to report a vulnerability.
+
+### Android and iOS, and since 0.1.0
 
 - **Windows**: `Crashpad.start` lists `crashpad_wer.dll` in the registry under
   the current user, so fast-fail crashes — a `/GS` failure, a Rust abort —
@@ -24,14 +77,14 @@ Android and iOS.
   the crash, once sanitised — the same request Crashpad's handler sends, which
   on Android cannot speak https. A report that cannot be sent is tried again
   on later launches, five times in all. `CrashReportDatabase.requestUpload`
-  sends at once when `start` was given a `CrashpadOptions.upload`.
+  sends at once when `start` was given a `CrashpadOptions.uploadEndpoint`.
 - `Crashpad.sanitizationIdle` also covers the upload on mobile.
 - Android's versioned system libraries (`android.hardware.drm@1.4.so`) are no
   longer masked as email addresses; `ReportSanitizer.rulesVersion` is 2.
 - The native ABI is 2.
 - `CrashReportDatabase.recordUpload(id, remoteId:)` records a report the app
   sent its own way, from any state, so a backend that is not a minidump
-  collector needs no `CrashpadOptions.upload`.
+  collector needs no `CrashpadOptions.uploadEndpoint`.
 - `CrashReport.attachments`: a report's attachments, sanitised like its
   minidump (`[]` when there are none).
 

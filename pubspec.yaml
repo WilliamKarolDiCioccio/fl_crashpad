@@ -1,6 +1,6 @@
 name: fl_crashpad
 description: "Native crash reporting for Flutter with Google Crashpad: sanitised minidumps of crashes the Dart VM never sees, on desktop, Android and iOS, for any minidump backend."
-version: 0.1.0
+version: 1.0.0
 repository: https://github.com/WilliamKarolDiCioccio/fl_crashpad
 topics:
   - crash-reporting
