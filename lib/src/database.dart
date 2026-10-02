@@ -98,7 +98,7 @@ class CrashReport {
 /// sanitises any report not yet sanitised before returning it, and
 /// [requestUpload] before asking for it to be sent; a report that cannot be
 /// sanitised yet is left out rather than handed over raw. See
-/// [CrashpadOptions.sanitize] for what that costs and how to turn it off.
+/// [CrashpadOptions.disableSanitization] for what turning it off costs.
 class CrashReportDatabase {
   CrashReportDatabase(this.directory, {ReportSanitizer? sanitizer})
     : sanitizer = sanitizer ?? ReportSanitizer.forHost();
@@ -108,13 +108,18 @@ class CrashReportDatabase {
   /// What reports are cleaned with.
   final ReportSanitizer sanitizer;
 
-  /// Whether reports may be sent. Off until something turns it on.
-  bool get uploadsEnabled => StoreSettings.read(directory.path).uploadsEnabled;
+  /// Whether the user has agreed to reports being sent. `false` until
+  /// somebody says otherwise, and kept here — beside the reports — so the
+  /// answer survives restarts and can change without restarting Crashpad.
+  ///
+  /// [requestUpload] sends one report whatever this says: asking about a
+  /// particular report and being told yes is consent to that report.
+  bool get uploadConsent => StoreSettings.read(directory.path).uploadConsent;
 
-  set uploadsEnabled(bool enabled) {
+  set uploadConsent(bool granted) {
     final current = StoreSettings.read(directory.path);
     final next = StoreSettings(
-      uploadsEnabled: enabled,
+      uploadConsent: granted,
       sanitize: current.sanitize,
     )..write(directory.path);
     setNativeUploadsEnabled(directory.path, next.crashpadUploadsEnabled);

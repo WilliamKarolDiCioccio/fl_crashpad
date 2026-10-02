@@ -33,9 +33,9 @@ const int _version = 1;
 
 /// The package's own settings for one database.
 class StoreSettings {
-  const StoreSettings({required this.uploadsEnabled, required this.sanitize});
+  const StoreSettings({required this.uploadConsent, required this.sanitize});
 
-  final bool uploadsEnabled;
+  final bool uploadConsent;
   final bool sanitize;
 
   static File _file(String database) =>
@@ -47,30 +47,32 @@ class StoreSettings {
           jsonDecode(_file(database).readAsStringSync())
               as Map<String, Object?>;
       if (json['version'] != _version) {
-        return const StoreSettings(uploadsEnabled: false, sanitize: true);
+        return const StoreSettings(uploadConsent: false, sanitize: true);
       }
       return StoreSettings(
-        uploadsEnabled: json['uploadsEnabled'] == true,
+        // The key predates the name: it is what 0.1 wrote, and renaming it
+        // would quietly withdraw every consent already given.
+        uploadConsent: json['uploadsEnabled'] == true,
         sanitize: json['sanitize'] != false,
       );
     } on Object {
       // Absent or unreadable: nobody has agreed to anything, and reports are
       // cleaned — the two defaults that cannot leak.
-      return const StoreSettings(uploadsEnabled: false, sanitize: true);
+      return const StoreSettings(uploadConsent: false, sanitize: true);
     }
   }
 
   void write(String database) {
     _atomicWrite(_file(database), {
       'version': _version,
-      'uploadsEnabled': uploadsEnabled,
+      'uploadsEnabled': uploadConsent,
       'sanitize': sanitize,
     });
   }
 
   /// Crashpad's own setting, which only ever says yes when nothing needs
   /// cleaning first.
-  bool get crashpadUploadsEnabled => uploadsEnabled && !sanitize;
+  bool get crashpadUploadsEnabled => uploadConsent && !sanitize;
 }
 
 /// What happened to one report.
@@ -173,8 +175,8 @@ class StoredReport {
         marker != null &&
         marker.decision == null &&
         json['uploaded'] != true) {
-      final decision = settings.uploadsEnabled ? 'requested' : 'held';
-      if (settings.uploadsEnabled) requestNativeUpload(database, id);
+      final decision = settings.uploadConsent ? 'requested' : 'held';
+      if (settings.uploadConsent) requestNativeUpload(database, id);
       marker = _Marker(
         rules: marker.rules,
         masked: marker.masked,

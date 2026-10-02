@@ -421,7 +421,7 @@ carries the full argument):
 - The upload test runs a local HTTP server. With consent on, a crash sends
   nothing from the dying process. The next start sends it, and what the server
   receives holds neither.
-- With `sanitize: false` in the crasher, all five go red, the upload test with
+- With `disableSanitization: true` in the crasher, all five go red, the upload test with
   "sent from the crashed process".
 
 **Measured**: a 16.8 MB dump (a thread stack overflow) takes 200–500 ms and

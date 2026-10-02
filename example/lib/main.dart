@@ -60,7 +60,10 @@ Future<void> main(List<String> args) async {
         upload: upload == null
             ? null
             : CrashpadUpload(url: Uri.parse(upload), rateLimit: false),
-        uploadsEnabled: upload == null ? null : true,
+        // `--upload` is the headless check's: whoever runs it with a URL has
+        // said yes. An app passes what its user answered — never `true`
+        // because it has somewhere to send.
+        uploadConsent: upload == null ? null : true,
       ),
     );
     Crashpad.annotations['example.screen'] = 'home';
@@ -154,7 +157,7 @@ class _HomePageState extends State<HomePage> {
     if (!mounted) return;
     setState(() {
       _list = list;
-      _uploads = _reports.uploadsEnabled;
+      _uploads = _reports.uploadConsent;
     });
   }
 
@@ -242,14 +245,14 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 24),
           SwitchListTile(
-            title: const Text('Uploads enabled'),
+            title: const Text('Send crash reports'),
             subtitle: const Text(
-              'Consent, kept in the database. Nothing is sent without an '
-              'upload URL either, and this example has none.',
+              'The user\'s consent, kept in the database. Nothing is sent '
+              'without an upload URL either, and this example has none.',
             ),
             value: _uploads,
             onChanged: (value) {
-              _reports.uploadsEnabled = value;
+              _reports.uploadConsent = value;
               _refresh();
             },
           ),

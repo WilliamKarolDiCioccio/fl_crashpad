@@ -33,7 +33,7 @@ Future<void> main(List<String> args) async {
       handler: File(handler),
       annotations: {'fl_crashpad.process': 'process-$kind'},
       upload: url == null ? null : CrashpadUpload(url: url, rateLimit: false),
-      uploadsEnabled: url != null,
+      uploadConsent: url != null,
       periodicTasks: url != null,
     ),
   );

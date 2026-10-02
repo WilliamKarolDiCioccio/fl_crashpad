@@ -146,23 +146,23 @@ Crashpad.start(CrashpadOptions(
 ));
 ```
 
-`sanitize: false` turns it off, and Crashpad goes back to sending each report
+`disableSanitization: true` turns it off, and Crashpad goes back to sending each report
 from the crashed process, exactly as it was written.
 
 ## Uploads and consent
 
 Nothing leaves the machine unless two things are true: the app gave Crashpad a
-URL, and uploads are enabled.
+URL, and the user said yes.
 
 ```dart
 Crashpad.start(CrashpadOptions(
   databaseDirectory: dir,
   upload: CrashpadUpload(url: Uri.parse('https://example.com/minidump')),
-  uploadsEnabled: userAgreed, // null keeps the last answer
+  uploadConsent: userAgreed, // null keeps the last answer
 ));
 
 // Later, from the settings page:
-CrashReportDatabase(dir).uploadsEnabled = false;
+CrashReportDatabase(dir).uploadConsent = false;
 ```
 
 Consent lives in the database, not in the app's memory, so it survives

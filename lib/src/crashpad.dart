@@ -119,9 +119,9 @@ abstract final class Crashpad {
     // off while reports are sanitised.
     Directory(database).createSync(recursive: true);
     final settings = StoreSettings(
-      uploadsEnabled:
-          options.uploadsEnabled ?? StoreSettings.read(database).uploadsEnabled,
-      sanitize: options.sanitize,
+      uploadConsent:
+          options.uploadConsent ?? StoreSettings.read(database).uploadConsent,
+      sanitize: !options.disableSanitization,
     )..write(database);
     final sanitizer = options.sanitizer ?? ReportSanitizer.forHost();
 

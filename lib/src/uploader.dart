@@ -73,7 +73,7 @@ Future<void> uploadPending(
 
     final send =
         report['uploadExplicitlyRequested'] == true ||
-        (!settings.sanitize && settings.uploadsEnabled);
+        (!settings.sanitize && settings.uploadConsent);
     try {
       if (!send) {
         recordNativeUpload(database, id, uploadSkipped);
