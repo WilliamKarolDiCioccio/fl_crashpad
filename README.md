@@ -62,7 +62,7 @@ Future<void> main() async {
 
   Crashpad.start(CrashpadOptions(
     databaseDirectory: Directory('${support.path}/crashpad'),
-    annotations: {'version': '1.4.0', 'channel': 'stable'},
+    fixedAnnotations: {'version': '1.4.0', 'channel': 'stable'},
     attachments: [File('${support.path}/logs/latest.log')],
   ));
 
@@ -93,7 +93,7 @@ These are read at the moment of the crash, from memory Crashpad can read
 without allocating — which is why they are small: up to 64 entries, keys and
 values up to 255 bytes of UTF-8. Larger than that, write it to a file and pass
 it as an attachment. Fixed for the life of the process, pass it in
-`CrashpadOptions.annotations`, which Crashpad does not size-limit: those
+`CrashpadOptions.fixedAnnotations`, which Crashpad does not size-limit: those
 travel on the handler's command line.
 
 ## Sanitising reports
@@ -157,7 +157,7 @@ URL, and the user said yes.
 ```dart
 Crashpad.start(CrashpadOptions(
   databaseDirectory: dir,
-  upload: CrashpadUpload(url: Uri.parse('https://example.com/minidump')),
+  uploadEndpoint: CrashpadUploadEndpoint(url: Uri.parse('https://example.com/minidump')),
   uploadConsent: userAgreed, // null keeps the last answer
 ));
 
@@ -186,7 +186,7 @@ URL.
 ### Sending them your own way
 
 A backend that is not a minidump collector — object storage behind its own
-client, say — does not need the protocol at all. Give `start` no `upload`,
+client, say — does not need the protocol at all. Give `start` no `uploadEndpoint`,
 read the reports, send them however the backend wants, and tell the database:
 
 ```dart
@@ -277,7 +277,7 @@ dart run fl_crashpad:prefetch
 ```
 
 To opt out of the native half altogether, on a build where you do not want
-it, set `disable: true` under the same user-define; `Crashpad.isSupported`
+it, set `disable: true` under the same user-define; `Crashpad.isAvailable`
 then reports `false`.
 
 ### Building it yourself
@@ -380,7 +380,7 @@ Flutter build finds it.
 - **Android 10 (API 29) or later.** The handler is started by the system
   linker out of the APK, which older versions cannot do; on 8 and 9 `start`
   throws `CrashpadException(unsupportedPlatform)`, and below 8 the library
-  does not load, which `Crashpad.isSupported` reports.
+  does not load, which `Crashpad.isAvailable` reports.
 - **64-bit only**: arm64-v8a and x86_64. An app built for armeabi-v7a still
   builds and runs there without Crashpad.
 - Nothing runs until a crash: the handler process exists only while it

@@ -72,7 +72,7 @@ void main(List<String> args) async {
       // This package's own checkout, where the native half is what
       // `tool/build_native.dart` is about to make: failing here would stop
       // the very command the message below tells people to run. No asset,
-      // and `Crashpad.isSupported` says so.
+      // and `Crashpad.isAvailable` says so.
       if (_buildingThisPackage(input)) return;
       // Anywhere else — an app, the example — a crash reporter that is
       // silently missing from a release is worse than a build that stops and

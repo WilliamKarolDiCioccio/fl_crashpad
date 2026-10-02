@@ -17,7 +17,7 @@ void main() {
   tearDown(() => temp.deleteSync(recursive: true));
 
   test('the library is present, speaks this ABI and names its revision', () {
-    expect(Crashpad.isSupported, isTrue);
+    expect(Crashpad.isAvailable, isTrue);
     expect(Crashpad.isStarted, isFalse);
     expect(Crashpad.crashpadRevision, matches(RegExp(r'^[0-9a-f]{40}$')));
   });

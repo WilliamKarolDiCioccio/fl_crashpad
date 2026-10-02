@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'sanitizer.dart';
 
-/// Where reports go once written, if anywhere.
+/// The server reports are sent to, and how they are sent.
 ///
 /// On desktop Crashpad's handler sends them; on Android and iOS this package
 /// does, from Dart, in exactly the same shape — Crashpad's Android handler can
@@ -13,8 +13,8 @@ import 'sanitizer.dart';
 /// self-hosted minidump collectors accept. Anything a particular backend wants
 /// — a release name, an API key in the query string — is an annotation or a
 /// part of [url], not a feature of this package.
-class CrashpadUpload {
-  const CrashpadUpload({
+class CrashpadUploadEndpoint {
+  const CrashpadUploadEndpoint({
     required this.url,
     this.rateLimit = true,
     this.gzip = true,
@@ -42,11 +42,11 @@ class CrashpadOptions {
     required this.databaseDirectory,
     this.handler,
     this.metricsDirectory,
-    this.upload,
+    this.uploadEndpoint,
     this.uploadConsent,
     this.disableSanitization = false,
     this.sanitizer,
-    this.annotations = const {},
+    this.fixedAnnotations = const {},
     this.attachments = const [],
     this.periodicTasks = true,
     this.registerWerModule = true,
@@ -73,7 +73,7 @@ class CrashpadOptions {
   /// On Android and iOS reports are sent by this package on the launch after
   /// the crash, in the background once [Crashpad.start] returns — see
   /// [Crashpad.sanitizationIdle] — whatever [disableSanitization] says.
-  final CrashpadUpload? upload;
+  final CrashpadUploadEndpoint? uploadEndpoint;
 
   /// Whether the user has agreed to reports being sent, or `null` (the
   /// default) to keep the answer they gave last time — which is `false`
@@ -110,12 +110,14 @@ class CrashpadOptions {
   /// folder exempt. Pass one to add the app's own secrets or private folders.
   final ReportSanitizer? sanitizer;
 
-  /// Process annotations, attached to every report. They are fixed at start —
-  /// for values that change, use [Crashpad.annotations].
+  /// Annotations fixed for the life of the process — a version, a channel —
+  /// attached to every report.
   ///
-  /// Crashpad puts no size limit on these, unlike runtime annotations: they
-  /// travel on the handler's command line.
-  final Map<String, String> annotations;
+  /// They never join [Crashpad.annotations], the map for values that change
+  /// while the app runs, and nothing can change these after [Crashpad.start]:
+  /// they travel on the handler's command line, which is also why Crashpad
+  /// puts no size limit on them.
+  final Map<String, String> fixedAnnotations;
 
   /// Files read at the moment of a crash and attached to its report — a log
   /// file, for instance. A file that does not exist then is skipped. Not

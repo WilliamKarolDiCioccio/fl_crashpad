@@ -31,8 +31,10 @@ Future<void> main(List<String> args) async {
     CrashpadOptions(
       databaseDirectory: Directory(database),
       handler: File(handler),
-      annotations: {'fl_crashpad.process': 'process-$kind'},
-      upload: url == null ? null : CrashpadUpload(url: url, rateLimit: false),
+      fixedAnnotations: {'fl_crashpad.process': 'process-$kind'},
+      uploadEndpoint: url == null
+          ? null
+          : CrashpadUploadEndpoint(url: url, rateLimit: false),
       uploadConsent: url != null,
       periodicTasks: url != null,
     ),

@@ -66,8 +66,9 @@ void main() {
     temp.deleteSync(recursive: true);
   });
 
-  CrashpadUpload upload() =>
-      CrashpadUpload(url: Uri.parse('http://127.0.0.1:${server.port}/submit'));
+  CrashpadUploadEndpoint upload() => CrashpadUploadEndpoint(
+    url: Uri.parse('http://127.0.0.1:${server.port}/submit'),
+  );
 
   /// A real report, parked unsent: the crasher is given no URL.
   Future<String> crash() async {

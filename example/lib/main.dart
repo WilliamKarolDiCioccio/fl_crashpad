@@ -56,10 +56,10 @@ Future<void> main(List<String> args) async {
     Crashpad.start(
       CrashpadOptions(
         databaseDirectory: database,
-        annotations: {'example.build': 'fl_crashpad example'},
-        upload: upload == null
+        fixedAnnotations: {'example.build': 'fl_crashpad example'},
+        uploadEndpoint: upload == null
             ? null
-            : CrashpadUpload(url: Uri.parse(upload), rateLimit: false),
+            : CrashpadUploadEndpoint(url: Uri.parse(upload), rateLimit: false),
         // `--upload` is the headless check's: whoever runs it with a URL has
         // said yes. An app passes what its user answered — never `true`
         // because it has somewhere to send.
