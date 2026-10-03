@@ -446,6 +446,14 @@ string reads as an IP.
   file and reported success. `unawaited_futures` is on for that reason.
 - **Don't depend on `meta` above Flutter's pin** (1.17.0): every Flutter
   consumer's resolution fails. The package does not use it.
+- **A `.pubignore` pattern is anchored or it matches at any depth.** 1.0.0
+  went to pub.dev without `lib/src/build/native_artifacts.dart`, because the
+  `.pubignore` said `build/` where the `.gitignore` said `/build/`: every
+  consumer's build hook failed, pub.dev scored the package 0/50 for analysis
+  and 0/20 for platforms, and `pub publish --dry-run` said 0 warnings — it
+  does not resolve imports. `test/pubignore_test.dart` asks git, with the
+  `.pubignore` as the only ignore file, whether any tracked file under
+  `lib/`, `hook/` or `bin/` would be left out.
 - **Windows runners:** the first `tar` on PATH is Git's GNU tar, which reads
   `C:\…` as a host, so the script calls System32's bsdtar. `python3` may not
   exist, so the overlay copy of the dotfile says `python` when it doesn't.

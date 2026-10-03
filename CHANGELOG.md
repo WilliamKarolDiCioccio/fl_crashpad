@@ -3,6 +3,16 @@
 What an app can do with each version, newest first. The reasoning behind a
 change lives beside the code in `CLAUDE.md`; this file only says what changed.
 
+## 1.0.1
+
+- **1.0.0 could not be built.** Its archive on pub.dev was missing
+  `lib/src/build/native_artifacts.dart`, which the build hook and
+  `dart run fl_crashpad:prefetch` import, so every build that depended on it
+  failed. Nothing else changed: the same API, the same `native-v0.1.0`
+  archives.
+- `hooks` and `code_assets` are accepted at either 1.x or 2.x, whichever the
+  app's other plugins resolve.
+
 ## 1.0.0
 
 The API is stable from here. The native half is unchanged — the same
