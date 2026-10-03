@@ -480,6 +480,19 @@ string reads as an IP.
 - **bionic's `std::mutex` has a destructor**, so `-Wexit-time-destructors`
   fails the globals that compiled on Linux; they are leaked singletons now.
 
+## Releasing the Dart half
+
+Bump `version` in `pubspec.yaml`, turn `## Unreleased` into `## <version>` in
+the CHANGELOG, merge, then run **Actions → publish** on the default branch. It
+tags `v<version>`, cuts the GitHub release with that CHANGELOG section as its
+notes, and publishes to pub.dev with GitHub's OIDC token, so no credential
+lives anywhere. Pushing a `v*` tag, or creating a release in the UI, only
+publishes. `.github/workflows/publish.yml` says why it dispatches itself on
+the tag, and what pub.dev's admin page must allow for that.
+
+The native half is released separately, below, and a Dart release never
+rebuilds it.
+
 ## Releasing the native half
 
 **Two versions, released separately.** The pubspec's `version` is the Dart
@@ -533,9 +546,9 @@ ahead of time.
 3. **Publish the draft.** A draft's files are private, so until then every
    download the lock makes 404s. It is left a draft so that somebody looks at
    it first, not so that it stays one.
-4. Run the command, commit the three lock files, and publish the package
-   (`dart pub publish --dry-run` first). The digests are recorded by hand, so
-   no digest is trusted that nobody looked at.
+4. Run the command, commit the three lock files, and release the Dart half
+   as above. The digests are recorded by hand, so no digest is trusted that
+   nobody looked at.
 
 **Never re-tag or replace an archive** of a published `native-v`: the digest
 in every released lock pins those exact bytes, and a changed file fails every
