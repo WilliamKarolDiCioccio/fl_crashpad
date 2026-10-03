@@ -1,6 +1,6 @@
 name: fl_crashpad
 description: "Native crash reporting for Flutter with Google Crashpad: sanitised minidumps of crashes the Dart VM never sees, on desktop, Android and iOS, for any minidump backend."
-version: 1.0.0
+version: 1.0.1
 repository: https://github.com/WilliamKarolDiCioccio/fl_crashpad
 topics:
   - crash-reporting
@@ -32,13 +32,16 @@ environment:
 
 # The first two are the build hook's: it verifies a downloaded archive's
 # sha256 and unpacks the tar.gz itself, the same on every host. `hooks` and
-# `code_assets` stay on 1.x, which the Flutter 3.41 toolchain speaks.
+# `code_assets` take either major, because the hook uses nothing either one
+# changed and an app's other plugins decide which it gets: `objective_c`
+# (through path_provider) held 1.x before 9.5. The suite resolves the newest
+# of both; the example, on Flutter 3.41, mixes hooks 2 with code_assets 1.
 dependencies:
   archive: ^4.0.0
-  code_assets: ^1.0.0
+  code_assets: ">=1.0.0 <3.0.0"
   crypto: ^3.0.0
   ffi: ^2.2.0
-  hooks: ^1.0.2
+  hooks: ">=1.0.2 <3.0.0"
 
 dev_dependencies:
   lints: ^6.0.0

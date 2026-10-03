@@ -1,10 +1,13 @@
 # A .pubignore replaces .gitignore for `dart pub publish`, so everything the
-# .gitignore keeps out is repeated here.
+# .gitignore keeps out is repeated here — **with its anchors**. Unanchored,
+# `build/` also matched `lib/src/build/`, and 1.0.0 shipped without the file
+# the build hook imports. `test/pubignore_test.dart` keeps every tracked file
+# under lib/, hook/ and bin/ in the archive.
 .dart_tool/
 .fvm/
-build/
-coverage/
-pubspec.lock
+/build/
+/coverage/
+/pubspec.lock
 *.iml
 .idea/
 
